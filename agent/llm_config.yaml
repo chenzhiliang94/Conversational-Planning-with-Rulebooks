@@ -1,0 +1,10 @@
+model:
+  name: GPT_forward
+  batch_size: 500
+  gpt_config:
+    model: gpt-3.5-turbo
+    temperature: 2
+    max_tokens: 30
+    top_p: 1.0
+    frequency_penalty: 1.0
+    presence_penalty: 1.0
