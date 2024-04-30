@@ -60,10 +60,11 @@ class Node:
 
 
 class MCTS:
-    def __init__(self, mdp, qfunction, bandit):
+    def __init__(self, mdp, qfunction, bandit, terminating_heuristic_q_function=None):
         self.mdp = mdp
         self.qfunction = qfunction
         self.bandit = bandit
+        self.terminating_heuristic_q_function = terminating_heuristic_q_function
 
     """
     Execute the MCTS algorithm from the initial state given, with timeout in seconds
@@ -111,7 +112,7 @@ class MCTS:
         state = node.state
         cumulative_reward = 0.0
         depth = 0
-        while not self.mdp.is_terminal(state):
+        while not self.mdp.is_terminal(state): # termination here is governed by max depth given in mdp
             # Choose an action to execute
             action = self.choose(state)
             # Execute the action
@@ -123,4 +124,12 @@ class MCTS:
 
             state = next_state
             print("simulating... state depth: ", state.depth)
+        
+        # in addition, apply a heuristic to the terminating state given by q-function.
+        if self.terminating_heuristic_q_function is not None:
+            # get branching actions
+            actions = self.mdp.get_actions_in_simulation(state)
+            best_action, best_reward = self.terminating_heuristic_q_function.get_max_q(state, actions)
+            cumulative_reward += pow(self.mdp.get_discount_factor(), depth) * best_reward
+        
         return cumulative_reward

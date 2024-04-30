@@ -65,18 +65,19 @@ class OfflineAgent(LearntAgent):
 # An agent which performs MCTS during runtime. Takes in a Q functon during initialization (possibly pretrained)
 class OnlineAgent(LearntAgent):
     
-    def __init__(self, qfunction : DeepQFunction, search_depth, mcts_time_limit, llm_agent, human_simulator) -> None:
+    def __init__(self, qfunction : DeepQFunction, search_depth, mcts_time_limit, llm_agent, human_simulator, terminating_heuristic_q_function=None) -> None:
         self.search_depth = search_depth
         self.mcts_time_limit = mcts_time_limit
         self.llm_agent = llm_agent
         self.human_simulator = human_simulator
         self.qfunction = qfunction
+        self.terminating_heuristic_q_function = terminating_heuristic_q_function
 
     def generate_action(self, state):
         
         # perform mcts 
         conversation_env = conversation_environment(self.human_simulator, self.llm_agent, state.conversation, max_depth=self.search_depth)
-        mcts = SingleAgentMCTS(conversation_env, self.qfunction, UpperConfidenceBounds())
+        mcts = SingleAgentMCTS(conversation_env, self.qfunction, UpperConfidenceBounds(), terminating_heuristic_q_function=self.terminating_heuristic_q_function)
         mcts.mcts(timeout=self.mcts_time_limit)
         self.qfunction = mcts.qfunction # qfunction learnt after performing mcts
         

@@ -28,7 +28,7 @@ class human_agent(agent):
         super().__init__(agent, config)
     
     def generate_prompt(self):
-        prompt = "You are a 23 year old young adult. Using the entire historical conversation as context, please continue the following conversation by giving a response. Do not add any other additional text. Keep your responses not too long. Conversation: ".format(self.config["action_sample_count"])
+        prompt = "You are a 23 year old young adult. Using the entire historical conversation as context, please continue the following conversation by giving a RANDOM response. Do not add any other additional text. Keep your responses not too long. Conversation: ".format(self.config["action_sample_count"])
         return prompt
     
     def toggle_print(self, to_print):
@@ -44,7 +44,7 @@ class human_agent(agent):
             #print("response shown to human: ", input_text)
             response = self.agent.generate_text(input_text)[0]
             output.append(response)
-        
+        output = list(set(output)) # remove duplicates
         if self.to_print:
             print("by human: ", output)
         return output
@@ -56,7 +56,7 @@ class llm_agent(agent):
         super().__init__(agent, config)
     
     def generate_prompt(self):
-        prompt = "You are an AI companion trying to converse with another human being. Using the entire historical conversation as context, please continue the following conversation by giving a response. Do not add any other additional text. Keep your responses not too long. Conversation: ".format(self.config["action_sample_count"])
+        prompt = "You are an AI companion trying to converse with another human being. Using the entire historical conversation as context, please continue the following conversation by giving a RANDOM response. Do not add any other additional text. Keep your responses not too long. Conversation: ".format(self.config["action_sample_count"])
         return prompt
     
     def toggle_print(self, to_print):
@@ -72,7 +72,7 @@ class llm_agent(agent):
             #print("response shown to human: ", input_text)
             response = self.agent.generate_text(input_text)[0]
             output.append(response)
-        
+        output = list(set(output)) # remove duplicates
         if self.to_print:
             print("by llm: ", output)
         return output
