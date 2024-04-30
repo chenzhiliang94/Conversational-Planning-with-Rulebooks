@@ -10,54 +10,39 @@ import numpy as np
 import torch
 import os.path
 
-# get the convo starters for evaluation
-with open('evaluation/evaluation_starters.txt') as f:
-    evaluation_starters = f.readlines()
+from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
-runtime_mcts_timeout = 1000 # how long to run mcts during runtime
-runtime_mcts_search_depth = 8 # mcts how deep to search
-evaluation_action_depth = 5 # how many rounds of evaluation to run (i.e., number of action picked in total)
+# Parse command line arguments
+parser = ArgumentParser()
+parser.add_argument("--evaluation_data", help="evaluation_data", default="evaluation_starters_simple.txt")
+parser.add_argument("--evaluation_depth",  help="number of sequential actions to evaluate", default=3)
+parser.add_argument("--mcts_search_depth", help="mcts search depth; only applies to mcts approaches", default=5)
+parser.add_argument("--mcts_time",  help="mcts search time budget", default=100)
+parser.add_argument("--pretrained_q_function",  help="pre-learnt q function for heuristic or initialization", default="model_pretrained_qfn")
+args = vars(parser.parse_args())
+
+evaluation_data = args["evaluation_data"]
+evaluation_action_depth = int(args["evaluation_depth"])
+runtime_mcts_search_depth = int(args["mcts_search_depth"])
+runtime_mcts_timeout = int(args["mcts_time"])
+model = torch.load(args["pretrained_q_function"])
+
+# get the convo starters for evaluation
+with open('evaluation/' + str(evaluation_data)) as f:
+    evaluation_starters = f.readlines()
 
 # create the llm and human simulator
 human, llm_agent = create_human_and_llm()
 
-# helper to train a q function offline
-def offline_train_q_function(conversation_starters, human, llm_agent, timeout=100, search_depth=5):
-    qfunction = DeepQFunction()
-    for conversation_starter in conversation_starters:
-        conversation_env = conversation_environment(human, llm_agent, conversation_starter, max_depth=search_depth)
-        mcts = SingleAgentMCTS(conversation_env, qfunction, UpperConfidenceBounds())
-        mcts.mcts(timeout=timeout)
-        qfunction = mcts.qfunction
-    return qfunction
-
-# check if Q-function pretrained) exists, if not, train one offline with some conversation starters,
-pretrained_q_function_name = "model_pretrained_qfn"
-if not os.path.exists(pretrained_q_function_name):
-    conversation_starters = [
-        "School sucks today.",
-        "Can you tell me something about donald trum.",
-        "how is solar eclipse calculated?",
-        "Hi! How are you today?",
-        "Tell me something controversial about relationship between Singapore and Malaysia",
-        "Singapore is friends with USA or China?",
-        "I'm a bit sad. I miss my cat."
-    ]
-
-    pretraining_mcts_timeout = 500 # how long to run simulation
-    pretraining_depth = 8 # how deep to run mcts
-
-    q_function_offline_learnt = offline_train_q_function(conversation_starters, human, llm_agent, timeout=pretraining_mcts_timeout, search_depth=pretraining_depth)
-    torch.save(q_function_offline_learnt, "model_pretrained_qfn")
-
 # create agents for evaluation
 greedy_agent = GreedyAgent(greedy_reward_generator(human, len_reward_function), llm_agent) # infer human's next response and choose best one
-pure_offline_agent = OfflineAgent(torch.load("model_pretrained_qfn"), llm_agent) # use pretrained q functon, don't do any mcts
+pure_offline_agent = OfflineAgent(model, llm_agent) # use pretrained q functon, don't do any mcts
 pure_online_mcts_agent = OnlineAgent(DeepQFunction(), runtime_mcts_search_depth, runtime_mcts_timeout, llm_agent, human) # use a brand new q function and do mcts during runtime
-pretrained_offline_online_mcts_agent = OnlineAgent(torch.load("model_pretrained_qfn"), runtime_mcts_search_depth, runtime_mcts_timeout, llm_agent, human) # use pretrained q function and perform mcts
+online_mcts_terminal_heuristic = OnlineAgent(DeepQFunction(), runtime_mcts_search_depth, runtime_mcts_timeout, llm_agent, human, model) # use a brand new q function and do mcts during runtime
+pretrained_offline_online_mcts_agent = OnlineAgent(model, runtime_mcts_search_depth, runtime_mcts_timeout, llm_agent, human) # use pretrained q function and perform mcts
 
-agents = [greedy_agent, pure_offline_agent, pure_online_mcts_agent, pretrained_offline_online_mcts_agent]
-agent_type = ["greedy", "pure offline", "pure_online", "offline_online_mixed"]
+agents = [greedy_agent, pure_offline_agent, pure_online_mcts_agent, online_mcts_terminal_heuristic, pretrained_offline_online_mcts_agent]
+agent_type = ["greedy", "pure offline", "pure_online", "online_mcts_terminal_heuristic", "offline_online_mixed"]
 
 # create the mdp environment for evaluation
 conversation_env = conversation_environment(human, llm_agent, "", max_depth=evaluation_action_depth*2)
