@@ -16,8 +16,8 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 # Parse command line arguments
 parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
-parser.add_argument("data", metavar="data", help="data-set name. i.e name of the parquet file")
-parser.add_argument("number",  metavar="number", help="number of conversation starters")
+parser.add_argument("--data", help="data-set name. i.e name of the parquet file")
+parser.add_argument("--number",  help="number of conversation starters")
 args = vars(parser.parse_args())
 
 data_path = args["data"]
