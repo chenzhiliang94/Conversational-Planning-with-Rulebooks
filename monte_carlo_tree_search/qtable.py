@@ -46,13 +46,13 @@ class DeepQFunction(QFunction, DeepAgent):
         if len(encoded_input) > 512:
             encoded_input = encoded_input[:512]
         output = self.q_network(**encoded_input)
-        print("output of network before update: ", output.logits)
+        #print("output of network before update: ", output.logits)
         for x in range(30):
             optimiser.zero_grad()  # Reset gradients to zero
             output = self.q_network(**encoded_input, labels = torch.tensor(reward, dtype=torch.float))
             output.loss.backward()
             optimiser.step()  # Do a gradient descent step with the optimiser
-        print("output of network after update: ", output.logits)
+        #print("output of network after update: ", output.logits)
         
     def get_q_value(self, state, action):
         

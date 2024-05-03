@@ -119,6 +119,7 @@ def run_evaluations(agent, type, env, evaluation_starters, number_replies):
             cumulative_reward = evaluate_agent(agent, env, initial_state, number_replies)
             print("cumulative reward for this trial: ", cumulative_reward)
             rewards.append(cumulative_reward)
+        print(evaluation_starter)
         print("all rewards from trials: ", rewards)
         print("mean: ", np.mean(rewards))
         print("std error: ", stats.sem(rewards))

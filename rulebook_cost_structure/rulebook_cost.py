@@ -1,10 +1,24 @@
 from typing import List, Set, Dict
 import numpy as np
 
-class Rulebook:
-    def __init__(self):
+class RulebookCost:
+    def __init__(self, cost):
         self.is_fitted = False
         self.cost_structure = []
+        self.cost = cost
+    
+    def __lt__(self, other):
+        assert len(other.cost) == len(self.cost), "cost sizes are different for comparison"
+        for c1, c2 in zip(self.cost, other.cost):
+            if self.cost < other.cost:
+                return True
+            elif self.cost > other.cost:
+                return False
+        return True # if both equal, tie break arbitrarily
+    
+    def __eq__(self, other):
+        assert len(other.cost) == len(self.cost), "cost sizes are different for comparison"
+        return self.cost == other.cost
     
     def get_features(self, traj_features : Dict) -> List:
         rules = traj_features[list(traj_features.keys())[0]]

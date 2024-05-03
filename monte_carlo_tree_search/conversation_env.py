@@ -1,4 +1,5 @@
 import random
+from reward.reward import reward_human_response_length
 
 class conversation_state():
     depth = 0
@@ -13,13 +14,14 @@ class conversation_state():
 
 class conversation_environment():
     
-    def __init__(self, human, llm, initial_state = "Tell me about a fact about Singapore.", max_depth=10) -> None:
+    def __init__(self, human, llm, initial_state = "Tell me about a fact about Singapore.", max_depth=10, reward_function = reward_human_response_length) -> None:
         self.state_to_action_map = {}
         self.state_action_to_response_map = {}
         self.max_depth = max_depth
         self.human_env = human
         self.llm_agent = llm
         self.initial_state = initial_state
+        self.reward_function = reward_function
     
     def get_initial_state(self):
         initial_state = conversation_state(self.initial_state, self.initial_state)
@@ -43,7 +45,7 @@ class conversation_environment():
         return False
     
     def get_reward(self, prev_state, action, human_response):
-        return len(human_response)
+        return self.reward_function(prev_state, action, human_response)
     
     # get action in simulation stage. So no storing of actions here
     def get_actions_in_simulation(self, state):
@@ -106,37 +108,13 @@ class conversation_environment():
         expanded_state.depth = state.depth + 2
         
         return expanded_state, self.get_reward(state, action, result_human_response)
-    
-    # same as execute as before, but NO NEED TO STORE ANY TRANSITIONS BECAUSE WE ARE JUST SIMULATING
-    # def simulate(self, state):
-    #     historical_context = state.conversation
-    #     immediate_response = state.response
-        
-    #     # randomly select a LLM response
-    #     llm_responses = self.llm_agent.sample_actions(historical_context)
-    #     action = random.choice(llm_responses)
-        
-    #     # given a state, and action, how will a human respond? We shall find out using a simulator and store the possible responses in our dictionary
-    #     possible_responses = self.human_env.sample_actions(historical_context + " " + action)
-        
-    #     # choose a random state to happen.
-    #     result_human_response = random.choice(list(possible_responses))
-        
-    #     # generate a state
-    #     new_historical_context = historical_context + " "  + action + " " + result_human_response
-    #     conversation_state= conversation_state(result_human_response, new_historical_context)
-    #     conversation_state.depth = state.depth + 2
-        
-    #     # get reward; calculate reward value of result_response using some metric
-    #     reward = 0.0 # actually, dependent only on action
-        
-    #     return conversation_state, reward
         
     def get_discount_factor(self):
         return 1.0
 
 # artifical environment where response choices are given from a list.
 # but simulation is still done randomly (or not)
+# ignore for now
 class conversation_environment_artificial():
     
     def __init__(self, human, llm, initial_state = "Tell me about a fact about Singapore.", max_depth=10) -> None:
@@ -163,7 +141,7 @@ class conversation_environment_artificial():
             return actions
         
     def is_terminal(self, state):
-        if state.depth > self.max_depth or state.response == "EXIT":
+        if state.depth >= self.max_depth or state.response == "EXIT":
             return True
         return False
     
