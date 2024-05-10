@@ -3,9 +3,11 @@ from graph_visualisation import GraphVisualisation
 from monte_carlo_tree_search.qtable import QTable, DeepQFunction
 from monte_carlo_tree_search.single_agent_mcts import SingleAgentMCTS
 from monte_carlo_tree_search.conversation_env import conversation_environment, conversation_state
+from monte_carlo_tree_search.semantic_conversation_env import semantic_conversation_environment, conversation_semantic_state
 from monte_carlo_tree_search.ucb import UpperConfidenceBounds
 import numpy as np
 from scipy import stats
+import torch
 
 from abc import abstractmethod
 
@@ -65,31 +67,56 @@ class OfflineAgent(LearntAgent):
 # An agent which performs MCTS during runtime. Takes in a Q functon during initialization (possibly pretrained)
 class OnlineAgent(LearntAgent):
     
-    def __init__(self, qfunction : DeepQFunction, search_depth, mcts_time_limit, llm_agent, human_simulator, terminating_heuristic_q_function=None) -> None:
+    def __init__(self, qfunction : DeepQFunction, search_depth, mcts_time_limit, llm_agent, human_simulator, search_space="response_space", terminating_heuristic_q_function=None, transition_model=None, tokenizer=None, embedding_model=None) -> None:
         self.search_depth = search_depth
         self.mcts_time_limit = mcts_time_limit
         self.llm_agent = llm_agent
         self.human_simulator = human_simulator
         self.qfunction = qfunction
         self.terminating_heuristic_q_function = terminating_heuristic_q_function
-
+        self.search_space = search_space
+        self.transition_model = transition_model
+        self.tokenizer = tokenizer
+        self.embedding_model = embedding_model
+    
     def generate_action(self, state):
         
-        # perform mcts 
-        conversation_env = conversation_environment(self.human_simulator, self.llm_agent, state.conversation, max_depth=self.search_depth)
+        # perform mcts
+        if self.search_space=="response_space":
+            conversation_env = conversation_environment(self.human_simulator, self.llm_agent, state.conversation, max_depth=self.search_depth)
+        elif self.search_space=="semantic_space":
+            conversation_env = semantic_conversation_environment(tokenizer=self.tokenizer, model=self.embedding_model, transition_model=self.transition_model, initial_state=state.conversation, max_depth=self.search_depth)
         mcts = SingleAgentMCTS(conversation_env, self.qfunction, UpperConfidenceBounds(), terminating_heuristic_q_function=self.terminating_heuristic_q_function)
         mcts.mcts(timeout=self.mcts_time_limit)
         self.qfunction = mcts.qfunction # qfunction learnt after performing mcts
         
         # get best action from learnt q function after mcts
         possible_actions = self.llm_agent.sample_actions(state.conversation)
-        best_action, best_reward = self.qfunction.get_max_q(state, possible_actions)
+        if self.search_space=="response_space":
+            best_action, best_reward = self.qfunction.get_max_q(state, possible_actions)
+            
+        # if semantic space used, some semantic projection is needed
+        elif self.search_space=="semantic_space":
+            encoded_input = self.tokenizer(state.conversation, return_tensors='pt')
+            output = self.model(**encoded_input).last_hidden_state
+            conversation_semantics = tuple(torch.mean(output[0],0).detach().numpy())
+            
+            action_semantics = []
+            for action in possible_actions:
+                encoded_input = self.tokenizer(state.conversation + " " + action, return_tensors='pt')
+                output = self.model(**encoded_input).last_hidden_state
+                action_semantics.append(tuple(torch.mean(output[0],0).detach().numpy()))
+            state.conversation = conversation_semantics
+            best_action, best_reward = self.qfunction.get_max_q(state, possible_actions)
+            best_idx = possible_actions.index(best_action)
+            best_action = possible_actions[best_idx]
+            
         return best_action
     
     # util function for resetting q function
     def reset(self):
         self.qfunction = DeepQFunction()
-        
+    
 def evaluate_agent(agent : LearntAgent, env, starting_state, number_replies):
     
     cumulative_reward = 0.0
@@ -107,7 +134,7 @@ def evaluate_agent(agent : LearntAgent, env, starting_state, number_replies):
 
 # evaluate an agent with the mdp.
 def run_evaluations(agent, type, env, evaluation_starters, number_replies):
-    
+    result_row = []
     for evaluation_starter in evaluation_starters:
         initial_state = conversation_state(evaluation_starter, evaluation_starter)
         initial_state.depth = 1
@@ -123,3 +150,5 @@ def run_evaluations(agent, type, env, evaluation_starters, number_replies):
         print("all rewards from trials: ", rewards)
         print("mean: ", np.mean(rewards))
         print("std error: ", stats.sem(rewards))
+        result_row.append((int(np.mean(rewards)), int(stats.sem(rewards))))
+    return result_row

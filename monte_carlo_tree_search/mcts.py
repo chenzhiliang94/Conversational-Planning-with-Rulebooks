@@ -73,7 +73,7 @@ class MCTS:
     def mcts(self, timeout=1, root_node=None):
         if root_node is None:
             root_node = self.create_root_node()
-            print(root_node.state)
+            #print(root_node.state)
 
         start_time = time.time()
         current_time = time.time()
@@ -87,7 +87,8 @@ class MCTS:
             if not self.mdp.is_terminal(selected_node.state):
                 child = selected_node.expand()
                 reward = self.simulate(child)
-                print("cumulative reward: ", reward + child.reward)
+                print("cumulative reward after simulation: ", reward + child.reward)
+                print("back propagating...")
                 selected_node.back_propagate(reward + child.reward, child)
             simulation_rollout_count +=1
             current_time = time.time()

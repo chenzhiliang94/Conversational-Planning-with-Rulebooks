@@ -38,8 +38,16 @@ def get_embeddings(tokenizer, model, convo):
             continue
     return np.array(result)
 
-def get_convo_embedding(pca, conversation_data, model, tokenizer, idx):
+def get_convo_embedding(pca, conversation_data, model, tokenizer, idx, plot_points):
     convo = get_conversation(conversation_data, idx)
+    if plot_points == "per_conversation_context":
+        c = ""
+        new_convo = []
+        for sentence in convo:
+            c += sentence
+            new_convo.append(c)
+        convo = new_convo
+            
     trajectory = get_embeddings(tokenizer, model, convo)
     return  pca.transform(trajectory)
 
@@ -59,16 +67,24 @@ def scatter(all_embedding_reduced_dim):
             LLM_response.append(response_embedding)
     human_response = np.array(human_response)
     LLM_response = np.array(LLM_response)
+    print(human_response)
+    print(LLM_response)
     plt.scatter(human_response[:,0],human_response[:,1],s=3, marker="s",c="black",label="human response")
     plt.scatter(LLM_response[:,0],LLM_response[:,1],s=3, marker="^",c="lime", label="LLM response")
     
-def visualize_convo(idx, all_embedding_reduced_dim, conversation_data, model_bert, tokenizer, pca):    
+def visualize_convo(idx, all_embedding_reduced_dim, conversation_data, model_bert, tokenizer, pca, plot_points="per_response"):    
     plt.figure(figsize=(13,8))
     # all embedding
     plt.scatter(all_embedding_reduced_dim[:,0], all_embedding_reduced_dim[:,1],s=1)
 
-    plt.plot(get_convo_embedding(pca, conversation_data, model_bert, tokenizer, idx)[:, 0], get_convo_embedding(pca, conversation_data, model_bert, tokenizer, idx)[:,1], c="r", linestyle='dashed',linewidth=0.5, alpha=0.6)
-    scatter(get_convo_embedding(pca, conversation_data, model_bert, tokenizer, idx))
+    convo_embedding = None
+    if plot_points == "per_response":
+        convo_embedding = get_convo_embedding(pca, conversation_data, model_bert, tokenizer, idx, plot_points)
+        plt.plot(convo_embedding[:, 0], convo_embedding[:,1], c="r", linestyle='dashed',linewidth=0.5, alpha=0.6)
+    elif plot_points == "per_conversation_context":
+        convo_embedding = get_convo_embedding(pca, conversation_data, model_bert, tokenizer, idx, plot_points)
+        plt.plot(convo_embedding[:, 0], convo_embedding[:,1], c="r", linestyle='dashed',linewidth=0.5, alpha=0.6)
+    scatter(convo_embedding)
 
 
     plt.legend()

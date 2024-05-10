@@ -19,8 +19,10 @@ parser.add_argument("--evaluation_depth",  help="number of sequential actions to
 parser.add_argument("--mcts_search_depth", help="mcts search depth; only applies to mcts approaches", default=5)
 parser.add_argument("--mcts_time",  help="mcts search time budget", default=100)
 parser.add_argument("--pretrained_q_function",  help="pre-learnt q function for heuristic or initialization", default="model_pretrained_qfn")
+parser.add_argument("--result_file",  help="result_file_name", default="evaluation_results")
 args = vars(parser.parse_args())
 
+evaluation_output = args["result_file"]
 evaluation_data = args["evaluation_data"]
 evaluation_action_depth = int(args["evaluation_depth"])
 runtime_mcts_search_depth = int(args["mcts_search_depth"])
@@ -49,8 +51,18 @@ conversation_env = conversation_environment(human, llm_agent, "", max_depth=eval
 human.toggle_print(False)
 llm_agent.toggle_print(False)
 
+all_results = []
+all_results.append(evaluation_starters)
 for agent,type in zip(agents, agent_type):
     start = time.time()
-    run_evaluations(agent, type,conversation_env, evaluation_starters, evaluation_action_depth)
+    result_row = run_evaluations(agent, type,conversation_env, evaluation_starters, evaluation_action_depth)
+    all_results.append(result_row)
     print(type)
     print("time taken for 10 trials: ", time.time()-start)
+    
+all_results = [list(i) for i in zip(*all_results)] # transpose
+import csv
+
+with open(evaluation_output+'.csv', 'w', newline='') as f:
+    writer = csv.writer(f)
+    writer.writerows(all_results)

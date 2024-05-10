@@ -25,6 +25,8 @@ class SingleAgentNode(Node):
 
     def is_fully_expanded(self):
         valid_actions = self.mdp.get_actions(self.state)
+        print("valid actions:", len(valid_actions))
+        print("number of children: ", len(self.children))
         if len(valid_actions) == len(self.children):
             return True
         else:
@@ -33,6 +35,7 @@ class SingleAgentNode(Node):
     """ Select a node that is not fully expanded """
 
     def select(self):
+        print("selecting...")
         if not self.is_fully_expanded() or self.mdp.is_terminal(self.state):
             return self
         else:
@@ -44,12 +47,14 @@ class SingleAgentNode(Node):
 
     def expand(self):
         if not self.mdp.is_terminal(self.state):
-            print("number of action at current state during expansion", len(self.mdp.get_actions(self.state)))
             # Randomly select an unexpanded action to expand
-            actions = self.mdp.get_actions(self.state) - self.children.keys()
+            print("expanding...")
+            print("number of children: ", len(set(self.children.keys())))
+            print("number of actions: ", len(set(self.mdp.get_actions(self.state))))
+            actions = set(self.mdp.get_actions(self.state)) - set(self.children.keys())
+
             if len(actions) == 0:
-                print(self.mdp.get_actions(self.state))
-                print(self.children.keys())
+                print("here")
                 return Exception("ERROR. action is empty. Why?")
             action = random.choice(list(actions))
 
@@ -69,6 +74,7 @@ class SingleAgentNode(Node):
         delta = (1 / (Node.visits[(self.state, action)])) * (
             reward - self.qfunction.get_q_value(self.state, action)
         )
+        
         self.qfunction.update(self.state, action, delta, (1 / (Node.visits[(self.state, action)])), reward)
 
         if self.parent != None:
