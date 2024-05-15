@@ -87,9 +87,8 @@ class MCTS:
             if not self.mdp.is_terminal(selected_node.state):
                 child = selected_node.expand()
                 reward = self.simulate(child)
-                print("cumulative reward after simulation: ", reward + child.reward)
-                print("back propagating...")
-                selected_node.back_propagate(reward + child.reward, child)
+                print("cumulative reward after simulation: ", reward)
+                selected_node.back_propagate(reward, child)
             simulation_rollout_count +=1
             current_time = time.time()
         print("number of rollouts achieved: ", simulation_rollout_count)
@@ -118,6 +117,7 @@ class MCTS:
             action = self.choose(state)
             # Execute the action
             (next_state, reward) = self.mdp.execute_in_simulation(state, action)
+            print("one step reward in simulation: ", reward)
 
             # Discount the reward
             cumulative_reward += pow(self.mdp.get_discount_factor(), depth) * reward

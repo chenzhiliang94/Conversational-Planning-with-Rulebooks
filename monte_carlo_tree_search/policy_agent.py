@@ -5,6 +5,8 @@ from monte_carlo_tree_search.single_agent_mcts import SingleAgentMCTS
 from monte_carlo_tree_search.conversation_env import conversation_environment, conversation_state
 from monte_carlo_tree_search.semantic_conversation_env import semantic_conversation_environment, conversation_semantic_state
 from monte_carlo_tree_search.ucb import UpperConfidenceBounds
+
+import copy
 import numpy as np
 from scipy import stats
 import torch
@@ -49,7 +51,7 @@ class greedy_reward_generator():
             for response in human_responses:
                 reward_to_be_averaged.append(self.reward_function(response))
             action_reward.append(np.mean(reward_to_be_averaged))
-        best_action_idx = action_reward.index(min(action_reward))
+        best_action_idx = action_reward.index(max(action_reward))
         return possible_actions[best_action_idx]
             
 # An agent with a pretrained Q function used to find best action during runtime. No searching is done.
@@ -67,29 +69,32 @@ class OfflineAgent(LearntAgent):
 # An agent which performs MCTS during runtime. Takes in a Q functon during initialization (possibly pretrained)
 class OnlineAgent(LearntAgent):
     
-    def __init__(self, qfunction : DeepQFunction, search_depth, mcts_time_limit, llm_agent, human_simulator, search_space="response_space", terminating_heuristic_q_function=None, transition_model=None, tokenizer=None, embedding_model=None) -> None:
+    def __init__(self, qfunction : DeepQFunction, search_depth, mcts_time_limit, llm_agent, human_simulator, reward_function_for_mcts, search_space="response_space", terminating_heuristic_q_function=None, transition_model=None, tokenizer=None, embedding_model=None) -> None:
         self.search_depth = search_depth
         self.mcts_time_limit = mcts_time_limit
         self.llm_agent = llm_agent
         self.human_simulator = human_simulator
         self.qfunction = qfunction
         self.terminating_heuristic_q_function = terminating_heuristic_q_function
+        self.reward_function_for_mcts = reward_function_for_mcts
         self.search_space = search_space
         self.transition_model = transition_model
         self.tokenizer = tokenizer
         self.embedding_model = embedding_model
     
     def generate_action(self, state):
-        
+        print("generating action in realtime...")
         # perform mcts
         if self.search_space=="response_space":
-            conversation_env = conversation_environment(self.human_simulator, self.llm_agent, state.conversation, max_depth=self.search_depth)
+            conversation_env = conversation_environment(self.human_simulator, self.llm_agent, state.conversation, max_depth=self.search_depth, reward_function=self.reward_function_for_mcts)
         elif self.search_space=="semantic_space":
-            conversation_env = semantic_conversation_environment(tokenizer=self.tokenizer, model=self.embedding_model, transition_model=self.transition_model, initial_state=state.conversation, max_depth=self.search_depth)
+            conversation_env = semantic_conversation_environment(tokenizer=self.tokenizer, model=self.embedding_model, transition_model=self.transition_model, initial_state=state.conversation, max_depth=self.search_depth, reward_function=self.reward_function_for_mcts)
+        print("performing MCTS search...")
         mcts = SingleAgentMCTS(conversation_env, self.qfunction, UpperConfidenceBounds(), terminating_heuristic_q_function=self.terminating_heuristic_q_function)
         mcts.mcts(timeout=self.mcts_time_limit)
         self.qfunction = mcts.qfunction # qfunction learnt after performing mcts
         
+        print("getting best action...")
         # get best action from learnt q function after mcts
         possible_actions = self.llm_agent.sample_actions(state.conversation)
         if self.search_space=="response_space":
@@ -97,20 +102,36 @@ class OnlineAgent(LearntAgent):
             
         # if semantic space used, some semantic projection is needed
         elif self.search_space=="semantic_space":
-            encoded_input = self.tokenizer(state.conversation, return_tensors='pt')
-            output = self.model(**encoded_input).last_hidden_state
-            conversation_semantics = tuple(torch.mean(output[0],0).detach().numpy())
             
+            # get conversation semantics
+            truncated_state = state.conversation
+            encoded_input = self.tokenizer(truncated_state, return_tensors='pt')
+            if len(encoded_input) > 512:
+                encoded_input = encoded_input[-512:]
+            output = self.embedding_model(**encoded_input).last_hidden_state
+            
+            conversation_semantics = tuple(torch.mean(output[0],0).detach().numpy())
+            semantic_state = copy.deepcopy(state)
+            semantic_state.conversation = conversation_semantics
+            
+            # get action semantics
             action_semantics = []
             for action in possible_actions:
-                encoded_input = self.tokenizer(state.conversation + " " + action, return_tensors='pt')
-                output = self.model(**encoded_input).last_hidden_state
-                action_semantics.append(tuple(torch.mean(output[0],0).detach().numpy()))
-            state.conversation = conversation_semantics
-            best_action, best_reward = self.qfunction.get_max_q(state, possible_actions)
-            best_idx = possible_actions.index(best_action)
+                concatenated_convo = truncated_state + " " + action # string
+                encoded_input = self.tokenizer(concatenated_convo, return_tensors='pt')
+                if len(encoded_input) > 512:
+                    encoded_input = encoded_input[-512:]
+                output = self.embedding_model(**encoded_input).last_hidden_state
+                # output is the semantics after combining action with state.
+                # we deduct from the output the state semantics to obtain a directional vector which
+                # represents the action semantics
+                action_semantic = tuple(torch.mean(output[0],0).detach().numpy())
+                action_semantic = tuple([x1-x2 for x1,x2 in zip(list(action_semantic),list(conversation_semantics))])
+                action_semantics.append(action_semantic)
+
+            best_action, best_reward = self.qfunction.get_max_q(semantic_state, action_semantics)
+            best_idx = action_semantics.index(best_action)
             best_action = possible_actions[best_idx]
-            
         return best_action
     
     # util function for resetting q function
@@ -124,12 +145,16 @@ def evaluate_agent(agent : LearntAgent, env, starting_state, number_replies):
         
         # get best action based on starting_state
         action = agent.generate_action(starting_state)
-        
+        print("state: ", starting_state)
+        print("action: ", action)
         # go to next state
+        print("reward function for evaluation:", env.reward_function)
         next_state, reward = env.execute_in_simulation(starting_state, action)
-        
+        print("human response: ", next_state.response)
+        print("reward for one step of evaluation: ", reward)
         starting_state = next_state
         cumulative_reward += reward
+    print("entire evaluation convo: ", starting_state)
     return cumulative_reward
 
 # evaluate an agent with the mdp.

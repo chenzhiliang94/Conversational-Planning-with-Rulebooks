@@ -54,7 +54,6 @@ class SingleAgentNode(Node):
             actions = set(self.mdp.get_actions(self.state)) - set(self.children.keys())
 
             if len(actions) == 0:
-                print("here")
                 return Exception("ERROR. action is empty. Why?")
             action = random.choice(list(actions))
 

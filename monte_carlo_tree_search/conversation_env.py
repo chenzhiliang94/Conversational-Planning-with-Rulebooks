@@ -58,7 +58,7 @@ class conversation_environment():
         immediate_response = state.response
         input_to_human_env = historical_context + " " + action
         possible_responses = self.human_env.sample_actions(input_to_human_env)
-        result_human_response = random.choice(possible_responses) 
+        result_human_response = random.choice(possible_responses)
         new_historical_context = historical_context + " "  + action + " " + result_human_response
         selected_state = conversation_state(result_human_response, new_historical_context)
         selected_state.depth = state.depth + 2

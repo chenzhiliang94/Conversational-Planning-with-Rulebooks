@@ -26,7 +26,11 @@ class semantic_conversation_environment():
     
     def get_initial_state(self):
         with torch.no_grad():
-            encoded_input = self.tokenizer(self.initial_state, return_tensors='pt')
+            initial_state = self.initial_state
+            encoded_input = self.tokenizer(initial_state, return_tensors='pt')
+            if len(encoded_input) > 512:
+                encoded_input = encoded_input[-512:]
+
             output = self.model(**encoded_input).last_hidden_state
             conversation_semantics = tuple(torch.mean(output[0],0).detach().numpy())
             initial_state = conversation_semantic_state(conversation_semantics)
