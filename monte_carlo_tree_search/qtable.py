@@ -79,4 +79,56 @@ class DeepQFunction(QFunction, DeepAgent):
                 best_reward = reward_estimate
         return (best_action, best_reward)
             
+class DeepQSemanticFunction(QFunction, DeepAgent):
+    """ A neural network to represent the Q-function for semantic space
+        This class uses PyTorch for the neural network framework (https://pytorch.org/).
+    """
+
+    def __init__(
+        self, dim, alpha=0.001
+    ) -> None:
+        self.alpha = alpha
+        self.dim = dim
+        self.q_network = nn.Sequential(
+            nn.Linear(dim * 2, 128),
+            nn.ReLU(),
+            nn.Linear(128, 24),
+            nn.ReLU(),
+            nn.Linear(24, 12),
+            nn.ReLU(),
+            nn.Linear(12, 1)
+        )
+        self.optimiser = Adam(self.q_network.parameters(), lr=self.alpha)
+
+    def merge(self, state, action):
+        # merge conversation, and LLM response together.
+        merged_convo = list(state.conversation) + list(action)
+        return torch.Tensor([merged_convo])
+    
+    def update(self, state, action, delta, visits, reward):
+        self.optimiser.lr=0.0005 * (1/visits)**2
+        merged_convo = self.merge(state, action)
+        for x in range(30):
+            self.optimiser.zero_grad()  # Reset gradients to zero
+            loss_fn = nn.MSELoss()
+            y_pred = self.q_network(merged_convo)
+            loss = loss_fn(y_pred, torch.tensor([reward],requires_grad=True))
+            loss.backward()
+            self.optimiser.step()
+        
+    def get_q_value(self, state, action):
+        merged_convo = self.merge(state, action)
+        output = self.q_network(merged_convo)
+        return output[0][0]
+
+    def get_max_q(self, state, actions):
             
+        best_action = None
+        best_reward = float("-inf")
+        for action in actions:
+            merged_convo = self.merge(state, action)
+            reward_estimate = self.q_network(merged_convo)[0][0]
+            if reward_estimate > best_reward:
+                best_action = action
+                best_reward = reward_estimate
+        return (best_action, best_reward)

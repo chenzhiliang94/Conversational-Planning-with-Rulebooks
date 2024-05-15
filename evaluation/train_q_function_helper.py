@@ -12,6 +12,7 @@ import torch
 import os.path
 import pandas as pd
 import random
+import tiktoken
 
 # with mcts
 def offline_train_q_function(conversation_starters, human, llm_agent, pretrained_q_function_name, timeout=100, search_depth=5):

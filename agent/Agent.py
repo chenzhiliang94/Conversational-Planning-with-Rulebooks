@@ -28,7 +28,7 @@ class human_agent(agent):
         super().__init__(agent, config)
     
     def generate_prompt(self):
-        prompt = "You are a 23 year old young adult. Using the entire historical conversation as context, please continue the following conversation by giving a RANDOM response. Do not add any other additional text. Keep your responses not too long. Conversation: ".format(self.config["action_sample_count"])
+        prompt = "You are a 23 year old young adult. Please continue the following conversation by giving a random response. Do not add any other additional text and ignore any [YOU] or [THEM] in outputs. Keep your responses not too long. Conversation: ".format(self.config["action_sample_count"])
         return prompt
     
     def toggle_print(self, to_print):
@@ -42,7 +42,10 @@ class human_agent(agent):
         for i in range(0, self.config["action_sample_count"]):
             input_text = self.generate_prompt() + historical_conversation
             #print("response shown to human: ", input_text)
-            response = self.agent.generate_text(input_text)[0]
+            response = self.agent.generate_text(input_text)[0].strip()
+            print("response by human: ", response)
+            if not response.startswith('[YOU]:'):
+                response ='[YOU]: ' + response
             output.append(response)
         output = list(set(output)) # remove duplicates
         if self.to_print:
@@ -56,7 +59,7 @@ class llm_agent(agent):
         super().__init__(agent, config)
     
     def generate_prompt(self):
-        prompt = "You are an AI companion trying to converse with another human being. Using the entire historical conversation as context, please continue the following conversation by giving a RANDOM response. Do not add any other additional text. Keep your responses not too long. Conversation: ".format(self.config["action_sample_count"])
+        prompt = "You are an AI companion trying to converse with another human being. Please continue the following conversation by giving a random response. Do not add any other additional text and ignore any [YOU] or [THEM] in outputs. Keep your responses not too long. Conversation: ".format(self.config["action_sample_count"])
         return prompt
     
     def toggle_print(self, to_print):
@@ -70,7 +73,10 @@ class llm_agent(agent):
         for i in range(0, self.config["action_sample_count"]):
             input_text = self.generate_prompt() + historical_conversation
             #print("response shown to human: ", input_text)
-            response = self.agent.generate_text(input_text)[0]
+            response = self.agent.generate_text(input_text)[0].strip()
+            print("response by LLM: ", response)
+            if not response.startswith('[THEM]:'):
+                response ='[THEM]: ' + response
             output.append(response)
         output = list(set(output)) # remove duplicates
         if self.to_print:

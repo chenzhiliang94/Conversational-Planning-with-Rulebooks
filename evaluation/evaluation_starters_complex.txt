@@ -1,6 +1,6 @@
-Can academic dishonesty ruin your life? If not, how can it be turned around?
-If you could choose to do anything for a day, what would it be?
-What is your biggest fear?
-Would you rather ride a bike, ride a horse or drive a car?
-If you could only eat one meal for the rest of your life, what would it be?
-Which would you rather do: wash dishes, mow the lawn, clean the bathroom or vacuum the house?
+[YOU]: Can academic dishonesty ruin your life? If not, how can it be turned around?
+[YOU]: If you could choose to do anything for a day, what would it be?
+[YOU]: What is your biggest fear?
+[YOU]: Would you rather ride a bike, ride a horse or drive a car?
+[YOU]: If you could only eat one meal for the rest of your life, what would it be?
+[YOU]: Which would you rather do: wash dishes, mow the lawn, clean the bathroom or vacuum the house?

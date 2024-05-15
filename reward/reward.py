@@ -17,6 +17,9 @@ The cumulative sum should be derived by the function user.
 '''
 
 def reward_human_response_length(prev_state , action : str, human_response : str) -> float:
+    print("prev state: ", prev_state)
+    print("action by us (LLM): ", action)
+    print("one step human response: ", human_response)
     return len(human_response)
 
 def reward_llm_toxicity(prev_state , action : str, human_response : str) -> float:
