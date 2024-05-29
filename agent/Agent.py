@@ -37,6 +37,7 @@ class human_agent(agent):
         else:
             self.to_print=to_print
     
+    # historical_conversation is a STRING of the entire convo.
     def sample_actions(self, historical_conversation):
         output = []
         for i in range(0, self.config["action_sample_count"]):
@@ -68,6 +69,7 @@ class llm_agent(agent):
         else:
             self.to_print=to_print
     
+    # historical_conversation is a STRING of the entire convo.
     def sample_actions(self, historical_conversation):
         output = []
         for i in range(0, self.config["action_sample_count"]):

@@ -2,7 +2,8 @@ model:
   name: GPT_forward
   batch_size: 500
   gpt_config:
-    model: gpt-4-turbo-2024-04-09
+    # model: gpt-4-turbo-2024-04-09
+    model: gpt-3.5-turbo-0125
     temperature: 2
     max_tokens: 30
     top_p: 1.0
