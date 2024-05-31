@@ -48,6 +48,6 @@ if data_path == "daily_dialogue_static":
     conversation_data = pd.read_parquet('daily_dialogue.parquet', engine='auto')
     conversation_starters = [x for x in list(conversation_data['dialog'])]
     
-    offline_train_q_function_static_conversation(conversation_starters, pretrained_q_function_name, length_convo, n)
+    q_function_offline_learnt = offline_train_q_function_static_conversation(conversation_starters, pretrained_q_function_name, length_convo, n)
     
     torch.save(q_function_offline_learnt, pretrained_q_function_name)

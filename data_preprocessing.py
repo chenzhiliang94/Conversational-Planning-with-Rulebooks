@@ -1,6 +1,31 @@
 import numpy as np
 import pandas as pd
+from csv import reader
+import torch
 
+def get_mistral_transition_data():
+    dim = 4096
+
+    rows = None
+    with open("daily_dialogue_transition_Mistral.csv") as csv_file:
+        csv_reader = reader(csv_file)
+        rows = list(csv_reader)
+
+    X = []
+    y = []
+    for row in rows:
+        row = row[2:] # ignore the sentences
+        assert len(row) == dim * 2
+        prev_embedding = [float(x) for x in row[:dim]]
+        next_embedding = [float(x) for x in row[dim:]]
+        
+        X.append(prev_embedding)
+        y.append(next_embedding)
+        
+    X=torch.Tensor(X)
+    y=torch.Tensor(y)
+    return X,y
+    
 def retrieve_openai_moderation(conversation_data : pd.DataFrame):
     # takes in dataframe and spits out [sentence, moderation_score]
     # with columns:
@@ -50,12 +75,3 @@ def retrieve_openai_moderation(conversation_data : pd.DataFrame):
     data = np.array(data)
     # ignore headers for now
     np.savetxt('moderation_data.csv', data, delimiter=",", fmt="%s")
-            
-            
-            
-        
-        
-        
-# conversation_data['contains_h'] = np.where(
-#     df['A'] == df['B'], 0, np.where(
-#     df['A'] >  df['B'], 1, -1)) 
