@@ -19,4 +19,8 @@
 - ` python3 evaluation/run_evaluation.py --evaluation_data=evaluation_starters_simple.txt --evaluation_depth=5 --mcts_search_depth=8 --mcts_time=1000 --pretr
 ained_q_function=model_pretrained_qfn`
 
+## Training transition model
+- go to https://drive.google.com/drive/u/0/folders/1DeiOgO01ljM7BoNFNnIJN9u0KkV2f1HG and download the two pkl file to the directory.
+- `python3 train_transition_model.py` to train the transition model.
+
 
