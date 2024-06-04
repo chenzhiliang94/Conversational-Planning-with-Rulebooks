@@ -21,6 +21,16 @@ class LearntAgent():
         pass
 
 # an agent that just greedily returns the best action during runtime. Infer next response by human and choose greedily.
+class RandomAgent(LearntAgent):
+    
+    def __init__(self, action_generator) -> None:
+        self.action_generator = action_generator
+
+    def generate_action(self, state):
+        possible_actions = self.action_generator.sample_actions(state.conversation)
+        return random.choice(possible_actions)
+    
+# an agent that just greedily returns the best action during runtime. Infer next response by human and choose greedily.
 class GreedyAgent(LearntAgent):
     
     def __init__(self, reward_calculator, action_generator) -> None:

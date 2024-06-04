@@ -121,8 +121,8 @@ if embedding_model_type == "mistral":
 
 if embedding_model_type == "nomic":
     # load model and tokenizer
-    tokenizer = AutoTokenizer.from_pretrained('Salesforce/SFR-Embedding-Mistral')
-    model = AutoModel.from_pretrained('Salesforce/SFR-Embedding-Mistral').to(cuda4)
+    tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
+    model = AutoModel.from_pretrained('nomic-ai/nomic-embed-text-v1', trust_remote_code=True).to(cuda4)
     print("finished loading from pretrained")
     embed_model = embedding_model_nomic(tokenizer, model, to_normalize, cuda4) 
 

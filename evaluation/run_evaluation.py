@@ -42,6 +42,7 @@ with open('evaluation/' + str(evaluation_data)) as f:
 human, llm_agent = create_human_and_llm()
 
 # create agents for evaluation
+random_agent = RandomAgent(llm_agent)
 greedy_agent = GreedyAgent(greedy_reward_generator(human, len_reward_function), llm_agent) # infer human's next response and choose best one
 pure_offline_agent = OfflineAgent(model, llm_agent) # use pretrained q functon, don't do any mcts
 pure_online_mcts_agent = OnlineAgent(DeepQFunction(), runtime_mcts_search_depth, runtime_mcts_timeout, llm_agent, human, reward_human_response_length, search_space="response_space") # use a brand new q function and do mcts during runtime
@@ -63,6 +64,10 @@ agents = []
 agent_type = []
 
 if agent_ == "greedy":
+    agent_type.append(agent_)
+    agents.append(greedy_agent)
+    
+if agent_ == "random":
     agent_type.append(agent_)
     agents.append(greedy_agent)
 

@@ -3,11 +3,37 @@ import pandas as pd
 from csv import reader
 import torch
 
-def get_mistral_transition_data():
+def get_mistral_transition_data(path):
     dim = 4096
 
     rows = None
-    with open("daily_dialogue_transition_Mistral.csv") as csv_file:
+    with open(path) as csv_file:
+        csv_reader = reader(csv_file)
+        
+
+        X = []
+        y = []
+        for ix,row in enumerate(csv_reader):
+            if len(row) == 0:
+                continue
+            print(ix)
+            row = row[2:] # ignore the sentences
+            assert len(row) == dim * 2
+            prev_embedding = [float(x) for x in row[:dim]]
+            next_embedding = [float(x) for x in row[dim:]]
+            
+            X.append(prev_embedding)
+            y.append(next_embedding)
+            
+        X=torch.Tensor(X)
+        y=torch.Tensor(y)
+        return X,y
+
+def get_nomic_transition_data(path):
+    dim = 768
+
+    rows = None
+    with open(path) as csv_file:
         csv_reader = reader(csv_file)
         rows = list(csv_reader)
 
@@ -15,6 +41,7 @@ def get_mistral_transition_data():
     y = []
     for row in rows:
         row = row[2:] # ignore the sentences
+        print(len(row))
         assert len(row) == dim * 2
         prev_embedding = [float(x) for x in row[:dim]]
         next_embedding = [float(x) for x in row[dim:]]
