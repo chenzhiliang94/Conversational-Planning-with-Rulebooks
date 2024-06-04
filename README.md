@@ -20,7 +20,7 @@
 ained_q_function=model_pretrained_qfn`
 
 ## Training transition model
-- go to https://drive.google.com/drive/u/0/folders/1DeiOgO01ljM7BoNFNnIJN9u0KkV2f1HG and download the two pkl file to the directory.
+- go to [https://drive.google.com/drive/u/0/folders/1DeiOgO01ljM7BoNFNnIJN9u0KkV2f1HG](https://drive.google.com/drive/folders/1DeiOgO01ljM7BoNFNnIJN9u0KkV2f1HG?usp=drive_link) and download the two pkl file to the directory.
 - `python3 train_transition_model.py` to train the transition model.
 
 
