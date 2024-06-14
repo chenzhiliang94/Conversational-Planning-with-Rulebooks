@@ -1,6 +1,9 @@
 # greedy 
 # nohup python3 -u evaluation/run_evaluation.py --evaluation_data=evaluation_starters_100.txt --evaluation_depth=5 --mcts_search_depth=8 --mcts_time=5 --pretrained_q_function=trained_q_function_daily_dialogueFULL --agent=greedy --result_file=50_starters_greedy_evaluation > output/50_starters_greedy_evaluation.out  2>&1 &
 
+# random
+python3 -u evaluation/run_evaluation.py --evaluation_data=evaluation_starters_50.txt --evaluation_depth=5 --mcts_search_depth=5 --mcts_time=1000 --pretrained_q_function=trained_q_function_daily_dialogueFULL --agent=random --result_file=50_starters_random_agent
+
 # # offline:
 # nohup python3 -u evaluation/run_evaluation.py --evaluation_data=evaluation_starters_100.txt --evaluation_depth=5 --mcts_search_depth=8 --mcts_time=5 --pretrained_q_function=trained_q_function_daily_dialogueFULL --agent=pure_offline --result_file=50_starters_pure_offline_evaluation > output/50_starters_pure_offline_evaluation.out  2>&1 &
 
