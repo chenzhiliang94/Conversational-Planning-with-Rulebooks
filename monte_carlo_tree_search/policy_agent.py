@@ -79,7 +79,7 @@ class OfflineAgent(LearntAgent):
 # An agent which performs MCTS during runtime. Takes in a Q functon during initialization (possibly pretrained)
 class OnlineAgent(LearntAgent):
     
-    def __init__(self, qfunction : DeepQFunction, search_depth, mcts_time_limit, llm_agent, human_simulator, reward_function_for_mcts, search_space="response_space", terminating_heuristic_q_function=None, transition_model=None, tokenizer=None, embedding_model=None) -> None:
+    def __init__(self, qfunction : DeepQFunction, search_depth, mcts_time_limit, llm_agent, human_simulator, reward_function_for_mcts, search_space="response_space", terminating_heuristic_q_function=None, transition_model=None, embedding_model=None) -> None:
         self.search_depth = search_depth
         self.mcts_time_limit = mcts_time_limit
         self.llm_agent = llm_agent
@@ -89,25 +89,32 @@ class OnlineAgent(LearntAgent):
         self.reward_function_for_mcts = reward_function_for_mcts
         self.search_space = search_space
         self.transition_model = transition_model
-        self.tokenizer = tokenizer
         self.embedding_model = embedding_model
     
     def generate_action(self, state):
         print("generating action in realtime...")
+        # possible_actions = self.llm_agent.sample_actions(state.conversation)
+        # if self.search_space=="response_space":
+        #     for act in possible_actions:
+        #         print("before mcts search, act: ", act)
+        #         print("before mcts search, Q value: ", self.qfunction.get_q_value(state, act))
         # perform mcts
         if self.search_space=="response_space":
             conversation_env = conversation_environment(self.human_simulator, self.llm_agent, state.conversation, max_depth=self.search_depth, reward_function=self.reward_function_for_mcts)
         elif self.search_space=="semantic_space":
-            conversation_env = semantic_conversation_environment(tokenizer=self.tokenizer, model=self.embedding_model, transition_model=self.transition_model, initial_state=state.conversation, max_depth=self.search_depth, reward_function=self.reward_function_for_mcts)
+            conversation_env = semantic_conversation_environment(embedding_model=self.embedding_model, transition_model=self.transition_model, initial_state=state.conversation, max_depth=self.search_depth, reward_function=self.reward_function_for_mcts)
         print("performing MCTS search...")
         mcts = SingleAgentMCTS(conversation_env, self.qfunction, UpperConfidenceBounds(), terminating_heuristic_q_function=self.terminating_heuristic_q_function)
         mcts.mcts(timeout=self.mcts_time_limit)
         self.qfunction = mcts.qfunction # qfunction learnt after performing mcts
-        
+        possible_actions = mcts.initial_actions 
+        print("bandit dict after mcts: ", mcts.bandit.times_selected)
         print("getting best action...")
         # get best action from learnt q function after mcts
-        possible_actions = self.llm_agent.sample_actions(state.conversation)
         if self.search_space=="response_space":
+            for act in possible_actions:
+                print("act: ", act)
+                print("Q value: ", self.qfunction.get_q_value(state, act))
             best_action, best_reward = self.qfunction.get_max_q(state, possible_actions)
             
         # if semantic space used, some semantic projection is needed
@@ -115,18 +122,17 @@ class OnlineAgent(LearntAgent):
             
             # get conversation semantics
             truncated_state = state.conversation
-            encoded_input = self.tokenizer(truncated_state, return_tensors='pt')
-            if len(encoded_input) > 512:
-                encoded_input = encoded_input[-512:]
-            output = self.embedding_model(**encoded_input).last_hidden_state
+            output = self.embedding_model.embed(truncated_state)
             
-            conversation_semantics = tuple(torch.mean(output[0],0).detach().numpy())
+            conversation_semantics = tuple(output.detach().numpy())
             semantic_state = copy.deepcopy(state)
             semantic_state.conversation = conversation_semantics
             
             # get action semantics
             action_semantics = []
             for action in possible_actions:
+                concatenated_convo = truncated_state + " " + action # string
+                output = self.embedding_model.embed(concatenated_convo)
                 concatenated_convo = truncated_state + action # string
                 encoded_input = self.tokenizer(concatenated_convo, return_tensors='pt')
                 if len(encoded_input) > 512:
@@ -135,7 +141,7 @@ class OnlineAgent(LearntAgent):
                 # output is the semantics after combining action with state.
                 # we deduct from the output the state semantics to obtain a directional vector which
                 # represents the action semantics
-                action_semantic = tuple(torch.mean(output[0],0).detach().numpy())
+                action_semantic = tuple(output.detach().numpy())
                 action_semantic = tuple([x1-x2 for x1,x2 in zip(list(action_semantic),list(conversation_semantics))])
                 action_semantics.append(action_semantic)
 
@@ -154,6 +160,8 @@ def evaluate_agent(agent : LearntAgent, env, starting_state, number_replies):
     for r in range(number_replies):
         
         # get best action based on starting_state
+        print("reuse Q...")
+        #agent.qfunction.reset()
         action = agent.generate_action(starting_state)
         print("state: ", starting_state)
         print("action: ", action)
@@ -176,7 +184,8 @@ def run_evaluations(agent, type, env, evaluation_starters, number_replies):
         
         # repeated trials
         rewards = []
-        for x in range(10):
+        for x in range(5):
+            agent.qfunction.reset()
             print("trial: ", x, " of evaluation for agent of type:  ", type)
             cumulative_reward = evaluate_agent(agent, env, initial_state, number_replies)
             print("cumulative reward for this trial: ", cumulative_reward)

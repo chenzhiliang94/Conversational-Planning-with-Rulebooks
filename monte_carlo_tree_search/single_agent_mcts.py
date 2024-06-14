@@ -47,19 +47,20 @@ class SingleAgentNode(Node):
 
     def expand(self):
         if not self.mdp.is_terminal(self.state):
+            next_actions = self.mdp.get_actions(self.state)
             # Randomly select an unexpanded action to expand
             print("expanding...")
             print("number of children: ", len(set(self.children.keys())))
-            print("number of actions: ", len(set(self.mdp.get_actions(self.state))))
-            actions = set(self.mdp.get_actions(self.state)) - set(self.children.keys())
+            print("number of actions: ", len(set(next_actions)))
+            actions = set(next_actions) - set(self.children.keys())
 
             if len(actions) == 0:
                 return Exception("ERROR. action is empty. Why?")
             action = random.choice(list(actions))
 
             self.children[action] = []
-            return self.get_outcome_child_expand(action)
-        return self
+            return self.get_outcome_child_expand(action), next_actions
+        return self, None
 
     """ Backpropogate the reward back to the parent node """
 
@@ -75,6 +76,17 @@ class SingleAgentNode(Node):
         )
         
         self.qfunction.update(self.state, action, delta, (1 / (Node.visits[(self.state, action)])), reward)
+
+        if self.parent != None:
+            self.parent.back_propagate(self.reward + reward, self)
+            
+    def back_propagate_simple(self, reward):
+        print("doing simple back propagation because we cannot expand a tree anymore.")
+        action = " "
+        Node.visits[self.state] = Node.visits[self.state] + 1
+        Node.visits[(self.state, action)] = Node.visits[(self.state, action)] + 1
+        
+        self.qfunction.update(self.state, action, 0, (1 / (Node.visits[(self.state, action)])), reward)
 
         if self.parent != None:
             self.parent.back_propagate(self.reward + reward, self)

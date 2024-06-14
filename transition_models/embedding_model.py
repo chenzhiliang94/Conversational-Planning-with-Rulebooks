@@ -37,7 +37,7 @@ class embedding_model_nomic():
     def __init__(self, tokenizer, model, to_normalize=False, cuda = torch.device('cuda:5')) -> None:
         self.tokenizer = tokenizer
         self.model = model
-        self.output_dim = 4096
+        self.output_dim = 768
         self.cuda = cuda
         self.to_normalize = to_normalize
     

@@ -49,6 +49,7 @@ def get_convo_embedding(pca, conversation_data, model, tokenizer, idx, plot_poin
         convo = new_convo
             
     trajectory = get_embeddings(tokenizer, model, convo)
+    print(trajectory.shape)
     return  pca.transform(trajectory)
 
 def scatter(all_embedding_reduced_dim):
@@ -69,8 +70,8 @@ def scatter(all_embedding_reduced_dim):
     LLM_response = np.array(LLM_response)
     print(human_response)
     print(LLM_response)
-    plt.scatter(human_response[:,0],human_response[:,1],s=3, marker="s",c="black",label="human response")
-    plt.scatter(LLM_response[:,0],LLM_response[:,1],s=3, marker="^",c="lime", label="LLM response")
+    plt.scatter(human_response[:,0],human_response[:,1],s=8, marker="s",c="black",label="human response")
+    plt.scatter(LLM_response[:,0],LLM_response[:,1],s=8, marker="^",c="lime", label="LLM response")
     
 def visualize_convo(idx, all_embedding_reduced_dim, conversation_data, model_bert, tokenizer, pca, plot_points="per_response"):    
     plt.figure(figsize=(13,8))
@@ -84,12 +85,13 @@ def visualize_convo(idx, all_embedding_reduced_dim, conversation_data, model_ber
     elif plot_points == "per_conversation_context":
         convo_embedding = get_convo_embedding(pca, conversation_data, model_bert, tokenizer, idx, plot_points)
         plt.plot(convo_embedding[:, 0], convo_embedding[:,1], c="r", linestyle='dashed',linewidth=0.5, alpha=0.6)
+        
+    print(convo_embedding.shape)
     scatter(convo_embedding)
 
 
     plt.legend()
     plt.title("embedding space of responses")
-    plt.show()
 
     convo = get_conversation(conversation_data, idx)
     score = get_scores(conversation_data, idx)

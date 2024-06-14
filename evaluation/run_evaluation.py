@@ -2,11 +2,12 @@ import sys, os
 sys.path.insert(1, os.path.join(sys.path[0], '..'))
 
 from monte_carlo_tree_search.policy_agent import *
-from monte_carlo_tree_search.qtable import QTable, DeepQSemanticFunction
+from monte_carlo_tree_search.qtable import QTable, DeepQSemanticFunction, ReplayBufferDeepQFunction
 from monte_carlo_tree_search.conversation_env import *
 from agent.Agent import *
-from transformers import AutoTokenizer, BertModel
+from transformers import AutoTokenizer, BertModel, AutoModel
 from transition_models.transition_model import TransitionModel
+from transition_models.embedding_model import embedding_model_mistral, embedding_model_nomic
 import torch
 from scipy import stats
 import numpy as np
@@ -24,6 +25,8 @@ parser.add_argument("--mcts_time",  help="mcts search time budget", default=100)
 parser.add_argument("--pretrained_q_function",  help="pre-learnt q function for heuristic or initialization", default="model_pretrained_qfn")
 parser.add_argument("--result_file",  help="result_file_name", default="evaluation_results")
 parser.add_argument("--agent",  help="agent type")
+parser.add_argument("--embedding", default="mistral")
+parser.add_argument("--cuda",  help="cuda")
 args = vars(parser.parse_args())
 
 evaluation_output = args["result_file"]
@@ -33,6 +36,8 @@ runtime_mcts_search_depth = int(args["mcts_search_depth"])
 runtime_mcts_timeout = int(args["mcts_time"])
 model = torch.load(args["pretrained_q_function"])
 agent_ = args["agent"]
+embedding_type = args["embedding"]
+cuda_ = int(args["cuda"])
 
 # get the convo starters for evaluation
 with open('evaluation/' + str(evaluation_data)) as f:
@@ -45,20 +50,8 @@ human, llm_agent = create_human_and_llm()
 random_agent = RandomAgent(llm_agent)
 greedy_agent = GreedyAgent(greedy_reward_generator(human, len_reward_function), llm_agent) # infer human's next response and choose best one
 pure_offline_agent = OfflineAgent(model, llm_agent) # use pretrained q functon, don't do any mcts
-pure_online_mcts_agent = OnlineAgent(DeepQFunction(), runtime_mcts_search_depth, runtime_mcts_timeout, llm_agent, human, reward_human_response_length, search_space="response_space") # use a brand new q function and do mcts during runtime
 online_mcts_terminal_heuristic = OnlineAgent(DeepQFunction(), runtime_mcts_search_depth, runtime_mcts_timeout, llm_agent, human, reward_human_response_length, model) # use a brand new q function and do mcts during runtime
 pretrained_offline_online_mcts_agent = OnlineAgent(model, runtime_mcts_search_depth, runtime_mcts_timeout, llm_agent, human, reward_human_response_length) # use pretrained q function and perform mcts
-
-# semantic space agent. WIP
-tokenizer = AutoTokenizer.from_pretrained("google-bert/bert-base-uncased")
-model_bert = BertModel.from_pretrained("google-bert/bert-base-uncased")
-
-def reward_function_dummy(a,b,c):
-    return random.randint(0,100)
-
-transition_model = TransitionModel()
-semanticqfunction = DeepQSemanticFunction(dim=768)
-pure_online_agent_semantic_agent = OnlineAgent(semanticqfunction, runtime_mcts_search_depth, runtime_mcts_timeout, llm_agent, human, reward_function_dummy, search_space="semantic_space", transition_model=transition_model, tokenizer=tokenizer, embedding_model=model_bert) # online SEMANTIC space agent
 
 agents = []
 agent_type = []
@@ -69,13 +62,14 @@ if agent_ == "greedy":
     
 if agent_ == "random":
     agent_type.append(agent_)
-    agents.append(greedy_agent)
+    agents.append(random_agent)
 
 if agent_ == "pure_offline":
     agent_type.append(agent_)
     agents.append(pure_offline_agent)
     
 if agent_ == "pure_online":
+    pure_online_mcts_agent = OnlineAgent(ReplayBufferDeepQFunction(steps_update=50, cuda=torch.device('cuda:'+str(cuda_))), runtime_mcts_search_depth, runtime_mcts_timeout, llm_agent, human, reward_human_response_length, search_space="response_space") # use a brand new q function and do mcts during runtime
     agent_type.append(agent_)
     agents.append(pure_online_mcts_agent)
 
@@ -83,7 +77,34 @@ if agent_ == "offline_online_mixed":
     agent_type.append(agent_)
     agents.append(pretrained_offline_online_mcts_agent)
 
-if agent_ == "semantic_online_agent":
+if agent_ == "semantic_online":
+    
+    embed_model=None
+    dim = None
+    if embedding_type == "mistral":
+        dim=4096
+        # load model and tokenizer
+        tokenizer = AutoTokenizer.from_pretrained('Salesforce/SFR-Embedding-Mistral')
+        model = AutoModel.from_pretrained('Salesforce/SFR-Embedding-Mistral').to(torch.device('cuda:'+str(cuda_)))
+        print("finished loading from pretrained")
+        embed_model = embedding_model_mistral(tokenizer, model, False, torch.device('cuda:'+str(cuda_)))
+
+    if embedding_type == "nomic":
+        dim=768
+        # load model and tokenizer
+        tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
+        model = AutoModel.from_pretrained('nomic-ai/nomic-embed-text-v1', trust_remote_code=True).to(torch.device('cuda:'+str(cuda_)))
+        print("finished loading from pretrained")
+        embed_model = embedding_model_nomic(tokenizer, model, False, torch.device('cuda:'+str(cuda_))) 
+
+
+    def reward_function_dummy(prev_state, action, human_response):
+        return random.randint(0,100)
+
+    transition_model = TransitionModel()
+    semanticqfunction = DeepQSemanticFunction(dim=dim)
+    pure_online_agent_semantic_agent = OnlineAgent(semanticqfunction, runtime_mcts_search_depth, runtime_mcts_timeout, llm_agent, human, reward_function_dummy, search_space="semantic_space", transition_model=transition_model, embedding_model=embed_model) # online SEMANTIC space agent
+
     agent_type.append(agent_)
     agents.append(pure_online_agent_semantic_agent)
 
@@ -99,7 +120,7 @@ for agent,type in zip(agents, agent_type):
     result_row = run_evaluations(agent, type, evaluation_conversation_env, evaluation_starters, evaluation_action_depth)
     all_results.append(result_row)
     print(type)
-    print("time taken for 10 trials: ", time.time()-start)
+    print("time taken for 5 trials: ", time.time()-start)
     
 all_results = [list(i) for i in zip(*all_results)] # transpose
 import csv

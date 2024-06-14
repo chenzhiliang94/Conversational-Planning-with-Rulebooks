@@ -1,5 +1,22 @@
 from collections import defaultdict
 from monte_carlo_tree_search.qfunction import QFunction
+import time
+
+def combine_encoded_inputs(input1, input2):
+    new_encoding = {}
+    for k in input1.keys():
+        # padding first 
+        i1_size = input1[k].shape[1]
+        i2_size = input2[k].shape[1]
+        i1 = input1[k]
+        i2 = input2[k]
+        if i2_size > i1_size:
+            i1 = nn.functional.pad(input1[k], (0, i2_size-i1_size), 'constant', 0)
+        elif i2_size < i1_size:
+            i2 = nn.functional.pad(input2[k], (0, i1_size-i2_size), 'constant', 0)
+        new_encoding[k] = torch.cat((i1,i2), 0)
+    return new_encoding
+
 
 class QTable(QFunction):
     def __init__(self, default=0.0):
@@ -24,20 +41,22 @@ class DeepQFunction(QFunction, DeepAgent):
     """
 
     def __init__(
-        self, alpha=0.001
+        self, alpha=0.001, steps_update=100, cuda = torch.device('cuda:2')
     ) -> None:
         self.alpha = alpha
+        self.steps_update = steps_update
         self.tokenizer = AutoTokenizer.from_pretrained("google-bert/bert-base-uncased")
         self.q_network = AutoModelForSequenceClassification.from_pretrained("google-bert/bert-base-uncased", 
-                                                           num_labels = 1)
+                                                           num_labels = 1).to(cuda)
         self.optimiser = Adam(self.q_network.parameters(), lr=self.alpha)
+        self.cuda = cuda
 
     def merge(self, state, action):
         # merge conversation, and LLM response together.
         return state.conversation + action
     
     def update(self, state, action, delta, visits, reward):
-        optimiser = Adam(self.q_network.parameters(), lr=0.0005 * (1/visits)**2)
+        optimiser = Adam(self.q_network.parameters(), lr=0.01 * (1/visits)**2)
         optimiser.zero_grad()  # Reset gradients to zero
         merged_convo = self.merge(state, action)
         merged_convo = str(merged_convo)
@@ -47,10 +66,14 @@ class DeepQFunction(QFunction, DeepAgent):
         if len(encoded_input) > 512:
             encoded_input = encoded_input[:512]
         output = self.q_network(**encoded_input)
+        # if len(merged_convo) > 1000:
+        #     merged_convo = merged_convo[-999:]
+        encoded_input = self.tokenizer(merged_convo, truncation=True, max_length=512,  return_tensors='pt').to(self.cuda)
+
         #print("output of network before update: ", output.logits)
-        for x in range(30):
+        for x in range(self.steps_update):
             optimiser.zero_grad()  # Reset gradients to zero
-            output = self.q_network(**encoded_input, labels = torch.tensor(reward, dtype=torch.float))
+            output = self.q_network(**encoded_input, labels = torch.tensor(reward, dtype=torch.float).to(self.cuda))
             output.loss.backward()
             optimiser.step()  # Do a gradient descent step with the optimiser
         #print("output of network after update: ", output.logits)
@@ -61,8 +84,10 @@ class DeepQFunction(QFunction, DeepAgent):
         merged_convo = str(merged_convo)
         if len(merged_convo) > 1000:
             merged_convo = merged_convo[-999:]
+        # if len(merged_convo) > 1000:
+        #     merged_convo = merged_convo[-999:]
         # Convert the state into a tensor
-        encoded_input = self.tokenizer(merged_convo, return_tensors='pt')
+        encoded_input = self.tokenizer(merged_convo, truncation=True, max_length=512,  return_tensors='pt').to(self.cuda)
         output = self.q_network(**encoded_input)
         return output.logits[0][0]
 
@@ -72,9 +97,9 @@ class DeepQFunction(QFunction, DeepAgent):
         best_reward = float("-inf")
         for action in actions:
             merged_convo = self.merge(state, action)
-            if len(merged_convo) > 1000:
-                merged_convo = merged_convo[-999:]
-            encoded_input = self.tokenizer(merged_convo, return_tensors='pt')
+            # if len(merged_convo) > 1000:
+            #     merged_convo = merged_convo[-999:]
+            encoded_input = self.tokenizer(merged_convo, truncation=True, max_length=512, return_tensors='pt').to(self.cuda)
             reward_estimate = self.q_network(**encoded_input).logits[0][0]
             if reward_estimate > best_reward:
                 best_action = action
@@ -130,6 +155,147 @@ class DeepQSemanticFunction(QFunction, DeepAgent):
         for action in actions:
             merged_convo = self.merge(state, action)
             reward_estimate = self.q_network(merged_convo)[0][0]
+            if reward_estimate > best_reward:
+                best_action = action
+                best_reward = reward_estimate
+        return (best_action, best_reward)
+    
+    
+class DeepQSemanticFunction(QFunction, DeepAgent):
+    """ A neural network to represent the Q-function for semantic space
+        This class uses PyTorch for the neural network framework (https://pytorch.org/).
+    """
+
+    def __init__(
+        self, dim, alpha=0.001
+    ) -> None:
+        self.alpha = alpha
+        self.dim = dim
+        self.q_network = nn.Sequential(
+            nn.Linear(dim * 2, 128),
+            nn.ReLU(),
+            nn.Linear(128, 24),
+            nn.ReLU(),
+            nn.Linear(24, 12),
+            nn.ReLU(),
+            nn.Linear(12, 1)
+        )
+        self.optimiser = Adam(self.q_network.parameters(), lr=self.alpha)
+
+    def merge(self, state, action):
+        # merge conversation, and LLM response together.
+        merged_convo = list(state.conversation) + list(action)
+        return torch.Tensor([merged_convo])
+    
+    def update(self, state, action, delta, visits, reward):
+        self.optimiser.lr=0.0005 * (1/visits)**2
+        merged_convo = self.merge(state, action)
+        for x in range(30):
+            self.optimiser.zero_grad()  # Reset gradients to zero
+            loss_fn = nn.MSELoss()
+            y_pred = self.q_network(merged_convo)
+            loss = loss_fn(y_pred, torch.tensor([reward],requires_grad=True))
+            loss.backward()
+            self.optimiser.step()
+        
+    def get_q_value(self, state, action):
+        merged_convo = self.merge(state, action)
+        output = self.q_network(merged_convo)
+        return output[0][0]
+
+    def get_max_q(self, state, actions):
+            
+        best_action = None
+        best_reward = float("-inf")
+        for action in actions:
+            merged_convo = self.merge(state, action)
+            reward_estimate = self.q_network(merged_convo)[0][0]
+            if reward_estimate > best_reward:
+                best_action = action
+                best_reward = reward_estimate
+        return (best_action, best_reward)
+    
+    
+class ReplayBufferDeepQFunction(QFunction, DeepAgent):
+    """ A neural network to represent the Q-function.
+        This class uses PyTorch for the neural network framework (https://pytorch.org/).
+    """
+
+    def __init__(
+        self, alpha=0.1, steps_update=100, cuda = torch.device('cuda:2')
+    ) -> None:
+        self.alpha = alpha
+        self.steps_update = steps_update
+        self.tokenizer = AutoTokenizer.from_pretrained("google-bert/bert-base-uncased")
+        self.q_network = AutoModelForSequenceClassification.from_pretrained("google-bert/bert-base-uncased", 
+                                                           num_labels = 1).to(cuda)
+        self.optimiser = Adam(self.q_network.parameters(), lr=self.alpha)
+        self.cuda = cuda
+        self.replay_buffer = None
+        self.past_rewards = []
+
+    def reset(self):
+        self.q_network = AutoModelForSequenceClassification.from_pretrained("google-bert/bert-base-uncased", 
+                                                           num_labels = 1).to(self.cuda)
+        self.replay_buffer = None
+        self.past_rewards = []
+    
+    def merge(self, state, action):
+        # merge conversation, and LLM response together.
+        return state.conversation + " " + action
+    
+    def update_buffer(self, input, reward):
+        self.past_rewards.append(reward)
+        if self.replay_buffer is None:
+            self.replay_buffer = input
+        else:
+            self.replay_buffer = combine_encoded_inputs(self.replay_buffer, input)
+
+    def update(self, state, action, delta, visits, reward):
+        print("Q replay buffer function is being updated...")
+        optimiser = Adam(self.q_network.parameters(), lr=self.alpha * (1/visits)**2)
+        merged_convo = self.merge(state, action)
+        # if len(merged_convo) > 1000:
+        #     merged_convo = merged_convo[-999:]
+        encoded_input = self.tokenizer(merged_convo, truncation=True, max_length=512,  padding=True, return_tensors='pt').to(self.cuda)
+        self.update_buffer(encoded_input, reward)
+        self.q_network.train()
+        # update based on this specific experience
+        start_time = time.time()
+        for x in range(self.steps_update):
+            optimiser.zero_grad()  # Reset gradients to zero
+            output = self.q_network(**encoded_input, labels = torch.tensor(reward, dtype=torch.float).to(self.cuda))
+            output.loss.backward()
+            optimiser.step()  # Do a gradient descent step with the optimiser
+        print("time taken for update Q", time.time()-start_time)
+        start_time = time.time()
+        # update based on replay buffer
+        for x in range(self.steps_update):
+            optimiser.zero_grad()  # Reset gradients to zero
+            output = self.q_network(**self.replay_buffer, labels = torch.tensor(self.past_rewards, dtype=torch.float).to(self.cuda))
+            output.loss.backward()
+            optimiser.step()  # Do a gradient descent step with the optimiser
+        print("time taken for update Q with replay buffer: ", time.time()-start_time)
+    def get_q_value(self, state, action):
+        
+        merged_convo = self.merge(state, action)
+        # if len(merged_convo) > 1000:
+        #     merged_convo = merged_convo[-999:]
+        # Convert the state into a tensor
+        encoded_input = self.tokenizer(merged_convo, truncation=True, max_length=512,  return_tensors='pt').to(self.cuda)
+        output = self.q_network(**encoded_input)
+        return output.logits[0][0]
+
+    def get_max_q(self, state, actions):
+        
+        best_action = None
+        best_reward = float("-inf")
+        for action in actions:
+            merged_convo = self.merge(state, action)
+            # if len(merged_convo) > 1000:
+            #     merged_convo = merged_convo[-999:]
+            encoded_input = self.tokenizer(merged_convo, truncation=True, max_length=512,  return_tensors='pt').to(self.cuda)
+            reward_estimate = self.q_network(**encoded_input).logits[0][0]
             if reward_estimate > best_reward:
                 best_action = action
                 best_reward = reward_estimate

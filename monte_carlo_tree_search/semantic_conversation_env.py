@@ -14,9 +14,8 @@ class conversation_semantic_state():
         
 class semantic_conversation_environment():
 
-    def __init__(self, tokenizer, model, transition_model, initial_state = "Tell me about a fact about Singapore.", max_depth=10, reward_function = reward_human_response_length) -> None:
-        self.tokenizer = tokenizer
-        self.model = model
+    def __init__(self, embedding_model, transition_model, initial_state = "Tell me about a fact about Singapore.", max_depth=10, reward_function = reward_human_response_length) -> None:
+        self.embedding_model = embedding_model
         self.transition_model = transition_model
         self.state_to_action_map = {}
         self.state_action_to_response_map = {}
@@ -25,14 +24,14 @@ class semantic_conversation_environment():
         self.reward_function = reward_function
     
     def get_initial_state(self):
+        print("getting initial state...")
         with torch.no_grad():
             initial_state = self.initial_state
-            encoded_input = self.tokenizer(initial_state, return_tensors='pt')
-            if len(encoded_input) > 512:
-                encoded_input = encoded_input[-512:]
-
-            output = self.model(**encoded_input).last_hidden_state
-            conversation_semantics = tuple(torch.mean(output[0],0).detach().numpy())
+            initial_embedding = self.embedding_model.embed(initial_state)
+            initial_embedding = initial_embedding.cpu().numpy()
+            
+            conversation_semantics = tuple(initial_embedding)
+            print("conversation semantics: ", conversation_semantics)
             initial_state = conversation_semantic_state(conversation_semantics)
             initial_state.depth = 1
             return initial_state

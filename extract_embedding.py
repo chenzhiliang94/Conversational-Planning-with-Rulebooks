@@ -59,9 +59,9 @@ def extract_semantic_embedding_LMSYS_dialogue(conversation_data, output_name, em
             row_data.append(s1)
             row_data.append(s2) # sentence
             
-            if idx % 2 == 1: # if human is s1, llm is s2
+            if idx % 2 == 0: # if human is s1, llm is s2
                 row_data_llm = row_data + list(transition_embedding)
-            if idx % 2 == 0: # llm is s1, human is s2
+            if idx % 2 == 1: # llm is s1, human is s2
                 row_data_env = row_data + list(transition_embedding)
             
                 

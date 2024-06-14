@@ -70,7 +70,7 @@ class MCTS:
     Execute the MCTS algorithm from the initial state given, with timeout in seconds
     """
 
-    def mcts(self, timeout=1, root_node=None):
+    def mcts(self, timeout=100, root_node=None):
         if root_node is None:
             root_node = self.create_root_node()
             #print(root_node.state)
@@ -78,18 +78,36 @@ class MCTS:
         start_time = time.time()
         current_time = time.time()
         simulation_rollout_count = 0
+        do_nothing_count = 0
+        initial_actions = None
+        print("time out for mcts given as: ", timeout)
         while current_time < start_time + timeout:
-
+            
             # Find a state node to expand
             selected_node = root_node.select()
             print("selected node depth: ")
             print(selected_node.state.depth)
+            
+            # if we can expand some more
             if not self.mdp.is_terminal(selected_node.state):
-                child = selected_node.expand()
+                child, action_in_expansion = selected_node.expand()
+                if initial_actions is None:
+                    self.initial_actions = action_in_expansion
+                    initial_actions = 1
                 reward = self.simulate(child)
-                print("cumulative reward after simulation: ", reward)
+                print("cumulative reward after expansion and simulation: ", reward)
                 selected_node.back_propagate(reward, child)
+            else:
+                do_nothing_count+=1
+                print("fully expanded tree. using simple back propagation: ", do_nothing_count)
+                selected_node.back_propagate_simple(0.0)
+            # else: # if we have maxed out the tree already
+            #     child = selected_node.expand()
+            #     reward = self.simulate(child)
+            #     print("cumulative reward after simulation: ", reward)
+            
             simulation_rollout_count +=1
+            print("time taken for one iteration of mcts: ", time.time() - current_time)
             current_time = time.time()
         print("number of rollouts achieved: ", simulation_rollout_count)
             

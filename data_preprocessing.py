@@ -28,31 +28,108 @@ def get_mistral_transition_data(path):
         X=torch.Tensor(X)
         y=torch.Tensor(y)
         return X,y
+    
+def get_mistral_transition_data(path):
+    dim = 4096
+
+    rows = None
+    with open(path) as csv_file:
+        csv_reader = reader(csv_file)
+        
+
+        X = []
+        y = []
+        for ix,row in enumerate(csv_reader):
+            if len(row) == 0:
+                continue
+            print(ix)
+            row = row[2:] # ignore the sentences
+            assert len(row) == dim * 2
+            prev_embedding = [float(x) for x in row[:dim]]
+            next_embedding = [float(x) for x in row[dim:]]
+            
+            X.append(prev_embedding)
+            y.append(next_embedding)
+            
+        X=torch.Tensor(X)
+        y=torch.Tensor(y)
+        return X,y
+    
+def get_mistral_harm_data(path):
+    dim = 4096
+
+    rows = None
+    with open(path) as csv_file:
+        csv_reader = reader(csv_file)
+        
+        # row dim: [2 sentences, 4 harm costs for first sentence, 4096 first sentence, 4096 second sentence]
+        X = []
+        y = []
+        for ix,row in enumerate(csv_reader):
+            print(ix)
+            if len(row) == 0:
+                continue
+            print(ix)
+            row = row[2:] # ignore the sentences
+            cost = [round(float(x), 3) for x in row[:4]]
+            prev_embedding = [round(float(x),3) for x in row[4:4+dim]]
+            
+            X.append(prev_embedding)
+            y.append(cost)
+            
+        X=torch.Tensor(X)
+        y=torch.Tensor(y)
+        return X,y
 
 def get_nomic_transition_data(path):
+    rows = None
+    dim=768
+    with open(path) as csv_file:
+        csv_reader = reader(csv_file)
+        
+
+        X = []
+        y = []
+        for ix,row in enumerate(csv_reader):
+            if len(row) == 0:
+                continue
+            row = row[2:] # ignore the sentences
+            assert len(row) == dim * 2
+            prev_embedding = [float(x) for x in row[:dim]]
+            next_embedding = [float(x) for x in row[dim:]]
+            
+            X.append(prev_embedding)
+            y.append(next_embedding)
+        
+    X=torch.Tensor(X)
+    y=torch.Tensor(y)
+    return X,y
+
+def get_nomic_harm_data(path):
     dim = 768
 
     rows = None
     with open(path) as csv_file:
         csv_reader = reader(csv_file)
-        rows = list(csv_reader)
-
-    X = []
-    y = []
-    for row in rows:
-        row = row[2:] # ignore the sentences
-        print(len(row))
-        assert len(row) == dim * 2
-        prev_embedding = [float(x) for x in row[:dim]]
-        next_embedding = [float(x) for x in row[dim:]]
         
-        X.append(prev_embedding)
-        y.append(next_embedding)
-        
-    X=torch.Tensor(X)
-    y=torch.Tensor(y)
-    return X,y
-    
+        # row dim: [2 sentences, 4 harm costs for first sentence, 4096 first sentence, 4096 second sentence]
+        X = []
+        y = []
+        for ix,row in enumerate(csv_reader):
+            print(ix)
+            if len(row) == 0:
+                continue
+            print(ix)
+            row = row[2:] # ignore the sentences
+            cost = [round(float(x), 3) for x in row[:4]]
+            prev_embedding = [round(float(x),3) for x in row[4:4+dim]]
+            
+            X.append(prev_embedding)
+            y.append(cost)
+            
+        X=torch.Tensor(X)
+        y=torch.Tensor(y)
+        return X,y
 def retrieve_openai_moderation(conversation_data : pd.DataFrame):
     # takes in dataframe and spits out [sentence, moderation_score]
     # with columns:
@@ -99,6 +176,4 @@ def retrieve_openai_moderation(conversation_data : pd.DataFrame):
                             violence_graphic]
             row_data = [str(x) for x in row_data]
             data.append(row_data)
-    data = np.array(data)
-    # ignore headers for now
-    np.savetxt('moderation_data.csv', data, delimiter=",", fmt="%s")
+    return data
