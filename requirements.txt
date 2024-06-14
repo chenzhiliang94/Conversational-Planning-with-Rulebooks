@@ -5,3 +5,5 @@ scikit-learn
 botorch
 torchvision
 pandas
+graphviz
+tiktoken

@@ -55,7 +55,7 @@ class greedy_reward_generator():
         convo = state.conversation
         action_reward = []
         for action in possible_actions:
-            human_responses = self.human.sample_actions(convo + " " + action)
+            human_responses = self.human.sample_actions(convo + action)
             
             reward_to_be_averaged = []
             for response in human_responses:
@@ -127,7 +127,7 @@ class OnlineAgent(LearntAgent):
             # get action semantics
             action_semantics = []
             for action in possible_actions:
-                concatenated_convo = truncated_state + " " + action # string
+                concatenated_convo = truncated_state + action # string
                 encoded_input = self.tokenizer(concatenated_convo, return_tensors='pt')
                 if len(encoded_input) > 512:
                     encoded_input = encoded_input[-512:]

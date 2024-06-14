@@ -1,99 +1,82 @@
 
-from agent.LLM import *
 import yaml
 
-class agent:
+from typing import List, Tuple
+from tqdm import tqdm
+from agent.Local_LLM import Local_LLM
+from agent.Online_LLM import Online_LLM
+from agent.Conversation import Conversation, HUMAN, LLM, get_role
 
-    def __init__(self, agent : GPT_Forward, config):
-        self.agent = agent
+DEBUG = False
+
+class Agent:
+    """Abstract base class for large language models."""
+
+    def __init__(self, role, config, needs_confirmation=False, disable_tqdm=True, 
+                 model=None, tokenizer=None):
+        """Initializes the model."""
+        self.role = role
         self.config = config
-    
-    @abstractmethod
-    def generate_prompt(self):
-        pass
-    
-    def sample_actions(self, historical_conversation):
-        input_text = self.generate_prompt() + historical_conversation
-        output = self.agent.generate_text(input_text)
-        print("LLM raw response: ")
-        print("\n\n RAW:", output)
-        output = output[0].split("\n")
-        output = [o[3:] for o in output]
-        return output
+        self.needs_confirmation = needs_confirmation
+        self.disable_tqdm = disable_tqdm
 
-# human simulator
-class human_agent(agent):
-    to_print = True
-    def __init__(self, agent : GPT_Forward, config):
-        super().__init__(agent, config)
-    
-    def generate_prompt(self):
-        prompt = "You are a 23 year old young adult. Please continue the following conversation by giving a random response. Do not add any other additional text and ignore any [YOU] or [THEM] in outputs. Keep your responses not too long. Conversation: ".format(self.config["action_sample_count"])
-        return prompt
-    
-    def toggle_print(self, to_print):
-        if to_print:
-            self.to_print=to_print
+        # Initialise human model
+        if self.config["type"] == "local":
+            LLM_class = Local_LLM
         else:
-            self.to_print=to_print
-    
-    # historical_conversation is a STRING of the entire convo.
-    def sample_actions(self, historical_conversation):
-        output = []
-        for i in range(0, self.config["action_sample_count"]):
-            input_text = self.generate_prompt() + historical_conversation
-            #print("response shown to human: ", input_text)
-            response = self.agent.generate_text(input_text)[0].strip()
-            print("response by human: ", response)
-            if not response.startswith('[YOU]:'):
-                response ='[YOU]: ' + response
-            output.append(response)
-        output = list(set(output)) # remove duplicates
-        if self.to_print:
-            print("by human: ", output)
-        return output
+            LLM_class = Online_LLM
+        self.model = LLM_class(
+            self.config,
+            model = model,
+            tokenizer = tokenizer,
+            )
+        tqdm.write(f"Initialized {get_role(role)} as {self.config["type"]} model: {self.config["name"]}.")
 
-# actual LLM to generate and select responses.
-class llm_agent(agent):
-    to_print = True
-    def __init__(self, agent : GPT_Forward, config):
-        super().__init__(agent, config)
-    
-    def generate_prompt(self):
-        prompt = "You are an AI companion trying to converse with another human being. Please continue the following conversation by giving a random response. Do not add any other additional text and ignore any [YOU] or [THEM] in outputs. Keep your responses not too long. Conversation: ".format(self.config["action_sample_count"])
-        return prompt
-    
-    def toggle_print(self, to_print):
-        if to_print:
-            self.to_print=to_print
+    def sample_actions(self, prompt : str) -> List[str]:
+        # convo = Conversation.from_delimited_string(prompt)
+        convo = prompt
+        return self.generate_text(convo)
+
+    def generate_text(self, convos : Conversation | List[Conversation], batch = False) -> List[str] | List[List[str]]:
+        """Generates text from the model.
+        Parameters:
+            convos: The prompt to use. List of Conversation.
+        Returns:
+            A list of list of strings.
+        """
+
+        convos_is_list = isinstance(convos, list)
+        if not convos_is_list:
+            convos = [convos]
+
+        chats : List[List[dict]] = []
+        # Create prompts from converstation histories
+        for convo in convos:
+            chat = self.model.apply_chat_format(convo)
+            chats.append(chat)
+
+        if DEBUG:
+            print("generated prompts")
+            print(chats)
+
+        generated_text = []
+
+        if batch:
+            raise NotImplementedError
         else:
-            self.to_print=to_print
-    
-    # historical_conversation is a STRING of the entire convo.
-    def sample_actions(self, historical_conversation):
-        output = []
-        for i in range(0, self.config["action_sample_count"]):
-            input_text = self.generate_prompt() + historical_conversation
-            #print("response shown to human: ", input_text)
-            response = self.agent.generate_text(input_text)[0].strip()
-            print("response by LLM: ", response)
-            if not response.startswith('[THEM]:'):
-                response ='[THEM]: ' + response
-            output.append(response)
-        output = list(set(output)) # remove duplicates
-        if self.to_print:
-            print("by llm: ", output)
-        return output
+            if not self.disable_tqdm:
+                chats = tqdm(chats)
+            for chat in chats:
+                output = self.model.generate(chat)
+                generated_text.append(output)
+        if not convos_is_list:
+            generated_text = generated_text[0]
+        return generated_text
 
-def create_human_and_llm():
+def create_human_and_llm(**kwargs) -> Tuple[Agent, Agent]:
     with open("agent/llm_config.yaml", "r") as f:
         llm_config = yaml.full_load(f)
-        
-    with open("agent/agent_config.yaml", "r") as f:
-        agent_config = yaml.full_load(f)
-        
-    llm_agent_config = model_from_config(llm_config["model"])
-    human_config = model_from_config(llm_config["model"])
-    llm = llm_agent(llm_agent_config, agent_config)
-    human = human_agent(human_config, agent_config)
-    return human, llm
+
+    human_agent = Agent(HUMAN, llm_config["human_model"], **kwargs)
+    llm_agent = Agent(LLM, llm_config["llm_model"], **kwargs)
+    return human_agent, llm_agent

@@ -34,12 +34,13 @@ class DeepQFunction(QFunction, DeepAgent):
 
     def merge(self, state, action):
         # merge conversation, and LLM response together.
-        return state.conversation + " " + action
+        return state.conversation + action
     
     def update(self, state, action, delta, visits, reward):
         optimiser = Adam(self.q_network.parameters(), lr=0.0005 * (1/visits)**2)
         optimiser.zero_grad()  # Reset gradients to zero
         merged_convo = self.merge(state, action)
+        merged_convo = str(merged_convo)
         if len(merged_convo) > 1000:
             merged_convo = merged_convo[-999:]
         encoded_input = self.tokenizer(merged_convo, return_tensors='pt')
@@ -57,6 +58,7 @@ class DeepQFunction(QFunction, DeepAgent):
     def get_q_value(self, state, action):
         
         merged_convo = self.merge(state, action)
+        merged_convo = str(merged_convo)
         if len(merged_convo) > 1000:
             merged_convo = merged_convo[-999:]
         # Convert the state into a tensor

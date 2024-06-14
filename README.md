@@ -2,9 +2,8 @@
 1. in command line: export OPENAI_API_KEY='....'
 
 ## Download conversation daily for Q function learning (offline)
-1. Download the data: https://huggingface.co/datasets/daily_dialog/resolve/refs%2Fconvert%2Fparquet/default/train/0000.parquet?download=true
-2. Place the .parquet file into the main directory and rename it as `daily_dialogue.parquet`
-3. Proceed to next section
+1. Download the data: `wget  https://huggingface.co/datasets/daily_dialog/resolve/refs%2Fconvert%2Fparquet/default/train/0000.parquet?download=true -O daily_dialogue.parquet`
+2. Proceed to next section
    
 ## Pretraining a Q function (can use for termination heuristic in MCTS, or as a pretrained Q function to be finetuned with runtime MCTS)
 - `nohup python3 -u evaluation/train_offline_q_function.py --data=daily_dialogue --number=200 > nohup_train_q_offline_small.out  2>&1 &` (note that "200" in command line means we sample 200 conversation starting point from `daily_dialogue.parquet` dataset (downloaded in previous step) to train the Q function).
