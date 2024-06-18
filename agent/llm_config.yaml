@@ -5,7 +5,7 @@ llm_model:
   device: 0
   generation_config:
     max_tokens: 30        # Maximum number of new tokens
-    n: 2                  # Number of chat completions
+    n: 5                  # Number of chat completions
     temperature: 1
     frequency_penalty: 0  # Between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.
     presence_penalty: 0   # Between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.
@@ -20,7 +20,7 @@ human_model:
     # Beam search params
     num_beams: 3              # Number of beams to consider
     num_beam_groups: 3        # Number of beam groups (tries to encourage diversity between groups). Must be leq num_beams
-    num_return_sequences: 3   # Number of samples to return. Must be leq num_beams
+    num_return_sequences: 5   # Number of samples to return. Must be leq num_beams
     diversity_penalty: 1.0    # Subtracted from a beam’s score if it generates a token same as any beam from other group at a particular time
 
     # Sample params

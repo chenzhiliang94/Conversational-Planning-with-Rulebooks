@@ -13,6 +13,7 @@ from scipy import stats
 import numpy as np
 import torch
 import os.path
+import time
 
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
@@ -102,7 +103,7 @@ if agent_ == "semantic_online":
         return random.randint(0,100)
 
     transition_model = TransitionModel()
-    semanticqfunction = DeepQSemanticFunction(dim=dim)
+    semanticqfunction = DeepQSemanticFunction(dim=dim, cuda=torch.device('cuda:'+str(cuda_)), steps_update=50)
     pure_online_agent_semantic_agent = OnlineAgent(semanticqfunction, runtime_mcts_search_depth, runtime_mcts_timeout, llm_agent, human, reward_function_dummy, search_space="semantic_space", transition_model=transition_model, embedding_model=embed_model) # online SEMANTIC space agent
 
     agent_type.append(agent_)
@@ -110,8 +111,6 @@ if agent_ == "semantic_online":
 
 # create the mdp environment for evaluation
 evaluation_conversation_env = conversation_environment(human, llm_agent, "", max_depth=evaluation_action_depth*2)
-human.toggle_print(False)
-llm_agent.toggle_print(False)
 
 all_results = []
 all_results.append(evaluation_starters)

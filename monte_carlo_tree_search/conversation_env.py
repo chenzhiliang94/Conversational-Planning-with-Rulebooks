@@ -4,7 +4,7 @@ from agent.Conversation import Conversation
 
 class conversation_state():
     depth = 0
-    def __init__(self, response, conversation) -> None:
+    def __init__(self, response, conversation : Conversation) -> None:
         self.response = response
         self.conversation = conversation
         self.depth = 2
@@ -14,23 +14,22 @@ class conversation_state():
         
 class conversation_environment():
     
-    def __init__(self, human, llm, initial_state = "Tell me about a fact about Singapore.", max_depth=10, reward_function = reward_human_response_length) -> None:
+    def __init__(self, human, llm, initial_state, max_depth=10, reward_function = reward_human_response_length) -> None:
         self.state_to_action_map = {}
         self.state_action_to_response_map = {}
         self.max_depth = max_depth
         self.human_env = human
         self.llm_agent = llm
-        self.initial_state = Conversation(initial_state)
+        self.initial_state = (initial_state)
         self.reward_function = reward_function
     
     def get_initial_state(self):
-        initial_state = conversation_state(self.initial_state, self.initial_state)
+        initial_state = conversation_state(str(self.initial_state), self.initial_state)
         initial_state.depth = 1
         return initial_state
         
     def get_actions(self, state):
         historical_context = state.conversation
-        immediate_response = state.response
         if historical_context in self.state_to_action_map:
             actions = self.state_to_action_map[historical_context]
             return actions
@@ -56,11 +55,11 @@ class conversation_environment():
     # randomly get a result state (this is only in simulation)
     def execute_in_simulation(self, state, action):
         historical_context = state.conversation
-        immediate_response = state.response
-        input_to_human_env = historical_context + action
-        possible_responses = self.human_env.sample_actions(input_to_human_env)
+
+        possible_responses = self.human_env.sample_actions(historical_context + action)
         result_human_response = random.choice(possible_responses)
-        new_historical_context = historical_context  + action + result_human_response
+        new_historical_context = historical_context  + action
+        new_historical_context = new_historical_context + result_human_response
         selected_state = conversation_state(result_human_response, new_historical_context)
         selected_state.depth = state.depth + 2
         
@@ -69,15 +68,15 @@ class conversation_environment():
     # during selection, we already have defined action to possible response mapping. So the transition probability is already approximated
     def execute_in_selection(self, state, action):
         historical_context = state.conversation
-        immediate_response = state.response
         
-        possible_responses = self.state_action_to_response_map[historical_context + action]
+        possible_responses = self.state_action_to_response_map[(historical_context + action)]
         
         # choose a random state to happen. TODO: use a transition probability
         result_human_response = random.choice(list(possible_responses))
         
         # generate a state
-        new_historical_context = historical_context  + action + result_human_response
+        new_historical_context = historical_context  + action
+        new_historical_context = new_historical_context + result_human_response
         selected_state = conversation_state(result_human_response, new_historical_context)
         selected_state.depth = state.depth + 2
         
@@ -95,19 +94,19 @@ class conversation_environment():
         input_to_human_env = historical_context + action
         possible_responses = self.human_env.sample_actions(input_to_human_env)
         assert not (historical_context + action) in self.state_action_to_response_map
-        self.state_action_to_response_map[input_to_human_env] = possible_responses
+        self.state_action_to_response_map[(input_to_human_env)] = possible_responses
         
-        possible_responses = self.state_action_to_response_map[historical_context + action]
+        possible_responses = self.state_action_to_response_map[(historical_context + action)]
         
         # choose a random state to happen. TODO: use a transition probability
         result_human_response = random.choice(list(possible_responses))
         
         # generate a state
-        new_historical_context = historical_context + action + result_human_response
+        new_historical_context = input_to_human_env + result_human_response
         expanded_state = conversation_state(result_human_response, new_historical_context)
         expanded_state.depth = state.depth + 2
         
         return expanded_state, self.get_reward(state, action, result_human_response)
         
     def get_discount_factor(self):
-        return 1.0
+        return 0.3

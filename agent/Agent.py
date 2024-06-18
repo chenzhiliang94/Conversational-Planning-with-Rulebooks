@@ -30,9 +30,9 @@ class Agent:
             model = model,
             tokenizer = tokenizer,
             )
-        tqdm.write(f"Initialized {get_role(role)} as {self.config["type"]} model: {self.config["name"]}.")
+        tqdm.write(f'Initialized {get_role(role)} as {self.config["type"]} model: {self.config["name"]}.')
 
-    def sample_actions(self, prompt : str) -> List[str]:
+    def sample_actions(self, prompt : Conversation) -> List[str]:
         # convo = Conversation.from_delimited_string(prompt)
         convo = prompt
         return self.generate_text(convo)
@@ -77,6 +77,6 @@ def create_human_and_llm(**kwargs) -> Tuple[Agent, Agent]:
     with open("agent/llm_config.yaml", "r") as f:
         llm_config = yaml.full_load(f)
 
-    human_agent = Agent(HUMAN, llm_config["human_model"], **kwargs)
+    human_agent = Agent(HUMAN, llm_config["llm_model"], **kwargs)
     llm_agent = Agent(LLM, llm_config["llm_model"], **kwargs)
     return human_agent, llm_agent

@@ -69,6 +69,7 @@ class Conversation:
         return obj
 
     def add_response(self, response : str, copy : bool = True) -> Self:
+        assert isinstance(response, str)
         if self.last_is_llm() | (len(self.order) == 0 and self.start_with_human):
             return self.add_human_response(response, copy)
         else:

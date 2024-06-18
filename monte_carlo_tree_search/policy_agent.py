@@ -6,6 +6,8 @@ from monte_carlo_tree_search.conversation_env import conversation_environment, c
 from monte_carlo_tree_search.semantic_conversation_env import semantic_conversation_environment, conversation_semantic_state
 from monte_carlo_tree_search.ucb import UpperConfidenceBounds
 
+from agent.Conversation import Conversation
+
 import copy
 import numpy as np
 from scipy import stats
@@ -28,7 +30,9 @@ class RandomAgent(LearntAgent):
 
     def generate_action(self, state):
         possible_actions = self.action_generator.sample_actions(state.conversation)
-        return random.choice(possible_actions)
+        best_action = random.choice(possible_actions)
+        print("random action selected by random agent: ", best_action)
+        return best_action
     
 # an agent that just greedily returns the best action during runtime. Infer next response by human and choose greedily.
 class GreedyAgent(LearntAgent):
@@ -52,17 +56,22 @@ class greedy_reward_generator():
     
     # greedy reward: infer multiple human responses. take average reward from them.
     def select(self, state, possible_actions):
+        print("selecting greedy action...")
         convo = state.conversation
         action_reward = []
         for action in possible_actions:
+            print("candidate action: ", action)
             human_responses = self.human.sample_actions(convo + action)
             
             reward_to_be_averaged = []
             for response in human_responses:
                 reward_to_be_averaged.append(self.reward_function(response))
+            print("greedy one step reward: ", np.mean(reward_to_be_averaged))
             action_reward.append(np.mean(reward_to_be_averaged))
         best_action_idx = action_reward.index(max(action_reward))
-        return possible_actions[best_action_idx]
+        best_action = possible_actions[best_action_idx]
+        print("selected greedy reward: ", best_action)
+        return best_action
             
 # An agent with a pretrained Q function used to find best action during runtime. No searching is done.
 class OfflineAgent(LearntAgent):
@@ -93,12 +102,6 @@ class OnlineAgent(LearntAgent):
     
     def generate_action(self, state):
         print("generating action in realtime...")
-        # possible_actions = self.llm_agent.sample_actions(state.conversation)
-        # if self.search_space=="response_space":
-        #     for act in possible_actions:
-        #         print("before mcts search, act: ", act)
-        #         print("before mcts search, Q value: ", self.qfunction.get_q_value(state, act))
-        # perform mcts
         if self.search_space=="response_space":
             conversation_env = conversation_environment(self.human_simulator, self.llm_agent, state.conversation, max_depth=self.search_depth, reward_function=self.reward_function_for_mcts)
         elif self.search_space=="semantic_space":
@@ -148,6 +151,7 @@ class OnlineAgent(LearntAgent):
             best_action, best_reward = self.qfunction.get_max_q(semantic_state, action_semantics)
             best_idx = action_semantics.index(best_action)
             best_action = possible_actions[best_idx]
+        print("best action selected: ", best_action)
         return best_action
     
     # util function for resetting q function
@@ -160,13 +164,11 @@ def evaluate_agent(agent : LearntAgent, env, starting_state, number_replies):
     for r in range(number_replies):
         
         # get best action based on starting_state
-        print("reuse Q...")
-        #agent.qfunction.reset()
+        if hasattr(agent, 'qfunction'):
+            agent.qfunction.reset()
+
         action = agent.generate_action(starting_state)
-        print("state: ", starting_state)
-        print("action: ", action)
         # go to next state
-        print("reward function for evaluation:", env.reward_function)
         next_state, reward = env.execute_in_simulation(starting_state, action)
         print("human response: ", next_state.response)
         print("reward for one step of evaluation: ", reward)
@@ -179,13 +181,14 @@ def evaluate_agent(agent : LearntAgent, env, starting_state, number_replies):
 def run_evaluations(agent, type, env, evaluation_starters, number_replies):
     result_row = []
     for evaluation_starter in evaluation_starters:
-        initial_state = conversation_state(evaluation_starter, evaluation_starter)
+        initial_state = conversation_state((evaluation_starter), Conversation(evaluation_starter))
         initial_state.depth = 1
         
         # repeated trials
         rewards = []
         for x in range(5):
-            agent.qfunction.reset()
+            if hasattr(agent, 'qfunction'):
+                agent.qfunction.reset()
             print("trial: ", x, " of evaluation for agent of type:  ", type)
             cumulative_reward = evaluate_agent(agent, env, initial_state, number_replies)
             print("cumulative reward for this trial: ", cumulative_reward)

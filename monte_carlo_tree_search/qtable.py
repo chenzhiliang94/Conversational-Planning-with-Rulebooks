@@ -167,10 +167,11 @@ class DeepQSemanticFunction(QFunction, DeepAgent):
     """
 
     def __init__(
-        self, dim, alpha=0.001
+        self, dim, cuda, steps_update, alpha=0.001
     ) -> None:
         self.alpha = alpha
         self.dim = dim
+        self.update_steps = steps_update
         self.q_network = nn.Sequential(
             nn.Linear(dim * 2, 128),
             nn.ReLU(),
@@ -180,6 +181,9 @@ class DeepQSemanticFunction(QFunction, DeepAgent):
             nn.ReLU(),
             nn.Linear(12, 1)
         )
+        self.cuda = cuda
+        self.replay_buffer = None
+        self.past_rewards = []
         self.optimiser = Adam(self.q_network.parameters(), lr=self.alpha)
 
     def merge(self, state, action):
@@ -187,14 +191,30 @@ class DeepQSemanticFunction(QFunction, DeepAgent):
         merged_convo = list(state.conversation) + list(action)
         return torch.Tensor([merged_convo])
     
+    def update_buffer(self, input, reward):
+        self.past_rewards.append(reward)
+        if self.replay_buffer is None:
+            self.replay_buffer = input
+        else:
+            self.replay_buffer = torch.cat((self.replay_buffer, input), 0)
+            
     def update(self, state, action, delta, visits, reward):
-        self.optimiser.lr=0.0005 * (1/visits)**2
+        self.optimiser.lr=self.alpha * (1/visits)**2
         merged_convo = self.merge(state, action)
-        for x in range(30):
+        for x in range(self.update_steps):
             self.optimiser.zero_grad()  # Reset gradients to zero
             loss_fn = nn.MSELoss()
             y_pred = self.q_network(merged_convo)
-            loss = loss_fn(y_pred, torch.tensor([reward],requires_grad=True))
+            loss = loss_fn(y_pred, torch.tensor(reward,requires_grad=True).view(1,1))
+            loss.backward()
+            self.optimiser.step()
+        self.update_buffer(merged_convo, reward)
+        
+        for x in range(self.update_steps):
+            self.optimiser.zero_grad()  # Reset gradients to zero
+            loss_fn = nn.MSELoss()
+            y_pred = self.q_network(self.replay_buffer)
+            loss = loss_fn(y_pred, torch.tensor(self.past_rewards,requires_grad=True).view(y_pred.shape[0],1))
             loss.backward()
             self.optimiser.step()
         
@@ -214,6 +234,19 @@ class DeepQSemanticFunction(QFunction, DeepAgent):
                 best_action = action
                 best_reward = reward_estimate
         return (best_action, best_reward)
+    
+    def reset(self):
+        self.q_network = nn.Sequential(
+            nn.Linear(self.dim * 2, 128),
+            nn.ReLU(),
+            nn.Linear(128, 24),
+            nn.ReLU(),
+            nn.Linear(24, 12),
+            nn.ReLU(),
+            nn.Linear(12, 1)
+        )
+        self.replay_buffer = None
+        self.past_rewards = []
     
     
 class ReplayBufferDeepQFunction(QFunction, DeepAgent):
@@ -255,6 +288,7 @@ class ReplayBufferDeepQFunction(QFunction, DeepAgent):
         print("Q replay buffer function is being updated...")
         optimiser = Adam(self.q_network.parameters(), lr=self.alpha * (1/visits)**2)
         merged_convo = self.merge(state, action)
+        merged_convo = str(merged_convo)
         # if len(merged_convo) > 1000:
         #     merged_convo = merged_convo[-999:]
         encoded_input = self.tokenizer(merged_convo, truncation=True, max_length=512,  padding=True, return_tensors='pt').to(self.cuda)
@@ -279,6 +313,7 @@ class ReplayBufferDeepQFunction(QFunction, DeepAgent):
     def get_q_value(self, state, action):
         
         merged_convo = self.merge(state, action)
+        merged_convo = str(merged_convo)
         # if len(merged_convo) > 1000:
         #     merged_convo = merged_convo[-999:]
         # Convert the state into a tensor
@@ -292,6 +327,7 @@ class ReplayBufferDeepQFunction(QFunction, DeepAgent):
         best_reward = float("-inf")
         for action in actions:
             merged_convo = self.merge(state, action)
+            merged_convo = str(merged_convo)
             # if len(merged_convo) > 1000:
             #     merged_convo = merged_convo[-999:]
             encoded_input = self.tokenizer(merged_convo, truncation=True, max_length=512,  return_tensors='pt').to(self.cuda)
