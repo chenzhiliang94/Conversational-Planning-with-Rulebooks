@@ -73,10 +73,10 @@ class Agent:
             generated_text = generated_text[0]
         return generated_text
 
-def create_human_and_llm(**kwargs) -> Tuple[Agent, Agent]:
+def create_human_and_llm(human_model_to_use="human_model", llm_model_to_use ="llm_model",**kwargs) -> Tuple[Agent, Agent]:
     with open("agent/llm_config.yaml", "r") as f:
         llm_config = yaml.full_load(f)
 
-    human_agent = Agent(HUMAN, llm_config["llm_model"], **kwargs)
-    llm_agent = Agent(LLM, llm_config["llm_model"], **kwargs)
+    human_agent = Agent(HUMAN, llm_config[human_model_to_use], **kwargs)
+    llm_agent = Agent(LLM, llm_config[llm_model_to_use], **kwargs)
     return human_agent, llm_agent

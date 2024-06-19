@@ -28,6 +28,7 @@ parser.add_argument("--result_file",  help="result_file_name", default="evaluati
 parser.add_argument("--agent",  help="agent type")
 parser.add_argument("--embedding", default="mistral")
 parser.add_argument("--cuda",  help="cuda")
+parser.add_argument("--reward_decay",  default=0.9)
 args = vars(parser.parse_args())
 
 evaluation_output = args["result_file"]
@@ -39,6 +40,7 @@ model = torch.load(args["pretrained_q_function"])
 agent_ = args["agent"]
 embedding_type = args["embedding"]
 cuda_ = int(args["cuda"])
+reward_decay = float(args["reward_decay"])
 
 # get the convo starters for evaluation
 with open('evaluation/' + str(evaluation_data)) as f:
@@ -70,7 +72,7 @@ if agent_ == "pure_offline":
     agents.append(pure_offline_agent)
     
 if agent_ == "pure_online":
-    pure_online_mcts_agent = OnlineAgent(ReplayBufferDeepQFunction(steps_update=50, cuda=torch.device('cuda:'+str(cuda_))), runtime_mcts_search_depth, runtime_mcts_timeout, llm_agent, human, reward_human_response_length, search_space="response_space") # use a brand new q function and do mcts during runtime
+    pure_online_mcts_agent = OnlineAgent(ReplayBufferDeepQFunction(steps_update=50, cuda=torch.device('cuda:'+str(cuda_))), runtime_mcts_search_depth, runtime_mcts_timeout, llm_agent, human, reward_human_response_length, search_space="response_space", reward_decay=reward_decay) # use a brand new q function and do mcts during runtime
     agent_type.append(agent_)
     agents.append(pure_online_mcts_agent)
 

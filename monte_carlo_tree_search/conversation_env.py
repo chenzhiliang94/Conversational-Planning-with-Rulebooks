@@ -14,7 +14,7 @@ class conversation_state():
         
 class conversation_environment():
     
-    def __init__(self, human, llm, initial_state, max_depth=10, reward_function = reward_human_response_length) -> None:
+    def __init__(self, human, llm, initial_state, max_depth=10, reward_function = reward_human_response_length, reward_decay=0.9) -> None:
         self.state_to_action_map = {}
         self.state_action_to_response_map = {}
         self.max_depth = max_depth
@@ -22,6 +22,7 @@ class conversation_environment():
         self.llm_agent = llm
         self.initial_state = (initial_state)
         self.reward_function = reward_function
+        self.reward_decay = reward_decay
     
     def get_initial_state(self):
         initial_state = conversation_state(str(self.initial_state), self.initial_state)
@@ -109,4 +110,4 @@ class conversation_environment():
         return expanded_state, self.get_reward(state, action, result_human_response)
         
     def get_discount_factor(self):
-        return 0.3
+        return self.reward_decay

@@ -318,13 +318,18 @@ class ReplayBufferDeepQFunction(QFunction, DeepAgent):
         #     merged_convo = merged_convo[-999:]
         # Convert the state into a tensor
         encoded_input = self.tokenizer(merged_convo, truncation=True, max_length=512,  return_tensors='pt').to(self.cuda)
-        output = self.q_network(**encoded_input)
+        self.q_network.eval()
+        with torch.no_grad():
+            output = self.q_network(**encoded_input)
         return output.logits[0][0]
 
     def get_max_q(self, state, actions):
         
         best_action = None
         best_reward = float("-inf")
+        self.q_network.eval()
+        with torch.no_grad():
+            output = self.q_network(**encoded_input)
         for action in actions:
             merged_convo = self.merge(state, action)
             merged_convo = str(merged_convo)
