@@ -329,15 +329,14 @@ class ReplayBufferDeepQFunction(QFunction, DeepAgent):
         best_reward = float("-inf")
         self.q_network.eval()
         with torch.no_grad():
-            output = self.q_network(**encoded_input)
-        for action in actions:
-            merged_convo = self.merge(state, action)
-            merged_convo = str(merged_convo)
-            # if len(merged_convo) > 1000:
-            #     merged_convo = merged_convo[-999:]
-            encoded_input = self.tokenizer(merged_convo, truncation=True, max_length=512,  return_tensors='pt').to(self.cuda)
-            reward_estimate = self.q_network(**encoded_input).logits[0][0]
-            if reward_estimate > best_reward:
-                best_action = action
-                best_reward = reward_estimate
+            for action in actions:
+                merged_convo = self.merge(state, action)
+                merged_convo = str(merged_convo)
+                # if len(merged_convo) > 1000:
+                #     merged_convo = merged_convo[-999:]
+                encoded_input = self.tokenizer(merged_convo, truncation=True, max_length=512,  return_tensors='pt').to(self.cuda)
+                reward_estimate = self.q_network(**encoded_input).logits[0][0]
+                if reward_estimate > best_reward:
+                    best_action = action
+                    best_reward = reward_estimate
         return (best_action, best_reward)
