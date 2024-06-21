@@ -116,9 +116,9 @@ class OnlineAgent(LearntAgent):
         print("getting best action...")
         # get best action from learnt q function after mcts
         if self.search_space=="response_space":
-            for act in possible_actions:
-                print("act: ", act)
-                print("Q value: ", self.qfunction.get_q_value(state, act))
+            print("getting best action from Q function...")
+            print("current state: ", state)
+            print("proposed actions: \n", possible_actions)
             best_action, best_reward = self.qfunction.get_max_q(state, possible_actions)
             
         # if semantic space used, some semantic projection is needed
@@ -135,7 +135,7 @@ class OnlineAgent(LearntAgent):
             # get action semantics
             action_semantics = []
             for action in possible_actions:
-                concatenated_convo = truncated_state + " " + action # string
+                concatenated_convo = truncated_state + action # string
                 output = self.embedding_model.embed(concatenated_convo)
                 concatenated_convo = truncated_state + action # string
                 encoded_input = self.tokenizer(concatenated_convo, return_tensors='pt')

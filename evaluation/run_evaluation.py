@@ -72,7 +72,7 @@ if agent_ == "pure_offline":
     agents.append(pure_offline_agent)
     
 if agent_ == "pure_online":
-    pure_online_mcts_agent = OnlineAgent(ReplayBufferDeepQFunction(steps_update=50, cuda=torch.device('cuda:'+str(cuda_))), runtime_mcts_search_depth, runtime_mcts_timeout, llm_agent, human, reward_human_response_length, search_space="response_space", reward_decay=reward_decay) # use a brand new q function and do mcts during runtime
+    pure_online_mcts_agent = OnlineAgent(ReplayBufferDeepQFunction(alpha=0.1, steps_update=100, cuda=torch.device('cuda:'+str(cuda_))), runtime_mcts_search_depth, runtime_mcts_timeout, llm_agent, human, reward_human_response_length, search_space="response_space", reward_decay=reward_decay) # use a brand new q function and do mcts during runtime
     agent_type.append(agent_)
     agents.append(pure_online_mcts_agent)
 

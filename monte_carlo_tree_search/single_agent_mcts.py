@@ -41,6 +41,7 @@ class SingleAgentNode(Node):
         else:
             actions = list(self.children.keys())
             action = self.bandit.select(self.state, actions, self.qfunction)
+            print("after selection, bandit content is: ", self.bandit)
             return self.get_outcome_child_select(action).select()
 
     """ Expand a node if it is not a terminal node """
