@@ -13,17 +13,32 @@ def get_role(role):
         return "LLM"
 
 class Conversation:
-    def __init__(self, starting_convo : str | None = None, start_with_human : bool = True): #, tokenizer : PreTrainedTokenizer
+    def __init__(self, starting_convo : Self | List[dict] | str | None = None, start_with_human : bool = True): #, tokenizer : PreTrainedTokenizer
         self.human_responses : List[str] = []
         self.llm_responses : List[str] = []
         self.full_convo : List[str] = []
         self.order : List[int] = []
         self.start_with_human = start_with_human
-        if not (starting_convo is None):
+        if isinstance(starting_convo, Conversation):
+            self.human_responses = starting_convo.human_responses
+            self.llm_responses = starting_convo.llm_responses
+            self.full_convo = starting_convo.full_convo
+            self.order = starting_convo.order
+            self.start_with_human = starting_convo.start_with_human
+        elif isinstance(starting_convo, list):
+            if len(starting_convo) > 0:
+                assert isinstance(starting_convo[0], dict), "List of dicts expected"
+                if starting_convo[0]["role"] == "system":
+                    starting_convo = starting_convo[1:]
+                if starting_convo[0]["role"] == "assistant":
+                    self.start_with_human = False
+                for i in starting_convo:
+                    self.add_response(i["content"], copy = False)
+        elif isinstance(starting_convo, str):
             self.add_response(starting_convo, copy = False)
 
     @classmethod
-    def from_delimited_string(self, string : str, delimiters : List[str] = ["[YOU]: ", "[THEM]: "]) -> Self:
+    def from_delimited_string(cls, string : str, delimiters : List[str] = ["[YOU]: ", "[THEM]: "]) -> Self:
         convo = Conversation()
         regex_pattern = '|'.join(map(re.escape, delimiters))
         for i in re.split(regex_pattern, string):
