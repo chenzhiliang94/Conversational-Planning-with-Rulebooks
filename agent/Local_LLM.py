@@ -7,17 +7,13 @@ from agent.LLM import LLM
 
 class Local_LLM(LLM):
     def __init__(self, model_config, model = None, tokenizer = None):
-        self.model_name = model_config["name"]
+        # self.model_name = model_config["name"]
         if tokenizer is None:
-            self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+            self.tokenizer = AutoTokenizer.from_pretrained(model_config["model_config"]["pretrained_model_name_or_path"])
         else:
             self.tokenizer = tokenizer
         if model is None:
-            self.model = AutoModelForCausalLM.from_pretrained(self.model_name, 
-                                                    torch_dtype=torch.bfloat16,
-                                                    load_in_8bit=True,
-                                                    device_map=model_config["device"],
-                                                    )
+            self.model = AutoModelForCausalLM.from_pretrained(**model_config["model_config"])
         else:
             self.model = model
         if self.model.generation_config.pad_token_id is None:

@@ -1,8 +1,11 @@
 name: Llama-3
 llm_model:
   type: local
-  name: meta-llama/Meta-Llama-3-8B-Instruct
-  device: 1
+  model_config:
+    pretrained_model_name_or_path: meta-llama/Meta-Llama-3-8B-Instruct
+    device_map: 1
+    load_in_8bit: True
+    attn_implementation: "flash_attention_2"
   generation_config:
     max_new_tokens: 75
 
@@ -20,8 +23,11 @@ llm_model:
   sys_prompt: "Imagine you are a human trying to converse with a language model. Please continue the following conversation by giving a random response. Keep your responses not too long."
 human_model:
   type: local
-  name: meta-llama/Meta-Llama-3-8B-Instruct
-  device: 2
+  model_config:
+    pretrained_model_name_or_path: meta-llama/Meta-Llama-3-8B-Instruct
+    device_map: 1
+    load_in_8bit: True
+    attn_implementation: "flash_attention_2"
   generation_config:
     max_new_tokens: 75
 
@@ -55,8 +61,11 @@ human_model:
 
 # human_model:
 #   type: local
-#   name: meta-llama/Meta-Llama-3-8B-Instruct
-#   device: 0
+  # model_config:
+  #   pretrained_model_name_or_path: meta-llama/Meta-Llama-3-8B-Instruct
+  #   device_map: 1
+  #   load_in_8bit: True
+  #   attn_implementation: "flash_attention_2"
 #   generation_config:
 #     max_new_tokens: 30
 

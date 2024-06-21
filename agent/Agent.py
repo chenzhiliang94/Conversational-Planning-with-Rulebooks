@@ -30,7 +30,7 @@ class Agent:
             model = model,
             tokenizer = tokenizer,
             )
-        tqdm.write(f'Initialized {get_role(role)} as {self.config["type"]} model: {self.config["name"]}.')
+        tqdm.write(f'Initialized {get_role(role)} as {self.config["type"]} model: {self.config["model_config"]["pretrained_model_name_or_path"]}.')
 
     def sample_actions(self, prompt : Conversation) -> List[str]:
         # convo = Conversation.from_delimited_string(prompt)
@@ -78,5 +78,8 @@ def create_human_and_llm(human_model_to_use="human_model", llm_model_to_use ="ll
         llm_config = yaml.full_load(f)
 
     human_agent = Agent(HUMAN, llm_config[human_model_to_use], **kwargs)
-    llm_agent = Agent(LLM, llm_config[llm_model_to_use], **kwargs)
+    if llm_config[human_model_to_use]["model_config"].copy().pop("device_map", None) == llm_config[llm_model_to_use]["model_config"].copy().pop("device_map", None):  # Use the same model for both human and llm
+        llm_agent = Agent(LLM, llm_config[llm_model_to_use], model = human_agent.model.model, tokenizer = human_agent.model.tokenizer, **kwargs)
+    else:
+        llm_agent = Agent(LLM, llm_config[llm_model_to_use], **kwargs)
     return human_agent, llm_agent
