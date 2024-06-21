@@ -65,7 +65,6 @@ class DeepQFunction(QFunction, DeepAgent):
         encoded_input = self.tokenizer(merged_convo, return_tensors='pt')
         if len(encoded_input) > 512:
             encoded_input = encoded_input[:512]
-        output = self.q_network(**encoded_input)
         # if len(merged_convo) > 1000:
         #     merged_convo = merged_convo[-999:]
         encoded_input = self.tokenizer(merged_convo, truncation=True, max_length=512,  return_tensors='pt').to(self.cuda)
