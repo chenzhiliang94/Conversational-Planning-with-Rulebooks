@@ -1,5 +1,5 @@
 import random
-from reward.reward import reward_human_response_length
+from reward.rewards_import import *
 from agent.Conversation import Conversation
 
 class conversation_state():
@@ -14,14 +14,14 @@ class conversation_state():
         
 class conversation_environment():
     
-    def __init__(self, human, llm, initial_state, max_depth=10, reward_function = reward_human_response_length, reward_decay=0.9) -> None:
+    def __init__(self, human, llm, initial_state, max_depth=10, reward_function : Base_Reward = Human_Length_Reward(), reward_decay=0.9) -> None:
         self.state_to_action_map = {}
         self.state_action_to_response_map = {}
         self.max_depth = max_depth
         self.human_env = human
         self.llm_agent = llm
-        self.initial_state = (initial_state)
-        self.reward_function = reward_function
+        self.initial_state = initial_state
+        self.reward_function = reward_function.get_reward
         self.reward_decay = reward_decay
     
     def get_initial_state(self):

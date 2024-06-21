@@ -5,7 +5,6 @@ from monte_carlo_tree_search.policy_agent import *
 from monte_carlo_tree_search.qtable import QTable
 from monte_carlo_tree_search.conversation_env import *
 from agent.Agent import *
-from reward.reward import *
 from evaluation.train_q_function_helper import *
 from scipy import stats
 import numpy as np

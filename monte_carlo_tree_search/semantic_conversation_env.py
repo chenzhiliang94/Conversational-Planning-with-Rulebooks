@@ -1,6 +1,6 @@
 import random
 import torch
-from reward.reward import reward_human_response_length
+from reward.rewards_import import *
 
 class conversation_semantic_state():
     depth = 0
@@ -14,14 +14,14 @@ class conversation_semantic_state():
         
 class semantic_conversation_environment():
 
-    def __init__(self, embedding_model, transition_model, initial_state = "Tell me about a fact about Singapore.", max_depth=10, reward_function = reward_human_response_length) -> None:
+    def __init__(self, embedding_model, transition_model, initial_state = "Tell me about a fact about Singapore.", max_depth=10, reward_function : Base_Reward = Human_Length_Reward()) -> None:
         self.embedding_model = embedding_model
         self.transition_model = transition_model
         self.state_to_action_map = {}
         self.state_action_to_response_map = {}
         self.max_depth = max_depth
         self.initial_state = initial_state
-        self.reward_function = reward_function
+        self.reward_function = reward_function.get_reward
     
     def get_initial_state(self):
         print("getting initial state...")
