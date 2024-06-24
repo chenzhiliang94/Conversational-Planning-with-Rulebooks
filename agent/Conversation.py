@@ -37,6 +37,10 @@ class Conversation:
         elif isinstance(starting_convo, str):
             self.add_response(starting_convo, copy = False)
 
+        self.roles = ["user", "assistant"]
+        if not self.start_with_human:
+            self.roles = self.roles[::-1]
+
     @classmethod
     def from_delimited_string(cls, string : str, delimiters : List[str] = ["[YOU]: ", "[THEM]: "]) -> Self:
         convo = Conversation()
@@ -91,21 +95,13 @@ class Conversation:
             return self.add_llm_response(response, copy)
 
     def create_chat(self) -> List[dict]:
-        # Generate a list of alternating assistant/user chat, from the last to the first conversation
-        flipped_convo = self.full_convo[::-1]
+        # Generate a list of alternating user/assistant chat
 
         assert len(self.order) > 0, "No convo yet, cannot generate prompt."
 
         chat : List[dict] = []
-        for i, response in enumerate(flipped_convo):
-            if i % 2:
-                role = "assistant"
-            else:
-                role = "user"
-            chat.append({"role": role, "content":response})
-
-        # Flip chat list
-        chat = chat[::-1]
+        for i, response in enumerate(self.full_convo):
+            chat.append({"role": self.roles[i%2], "content":response})
 
         return chat
     

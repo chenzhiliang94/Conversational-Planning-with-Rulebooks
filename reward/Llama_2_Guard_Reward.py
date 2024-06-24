@@ -7,7 +7,7 @@ from agent.Conversation import Conversation
 # Use Meta-Llama-Guard-2-8B safe probability as reward model.
 # The reward is the difference between the safe probability of the chat with the human response and the safe probability of the chat without the human response.
 class Llama_2_Guard_Reward(Base_Reward):
-    def __init__(self, model = None, device_map : int = 0, random_projection : int | None = None, random_proj_seed = 42) -> None:
+    def __init__(self, model = None, device_map : int = 0, random_projection : int | None = 1024, random_proj_seed = 42) -> None:
         try:
             assert model.name_or_path == "meta-llama/Meta-Llama-Guard-2-8B"
             self.model = model
@@ -40,7 +40,8 @@ class Llama_2_Guard_Reward(Base_Reward):
         self.proj_A = torch.cat((safe_unsafe_matrix, zero_pad_A), dim=0)
         self.proj_B = torch.cat((zero_pad_B, category_matrix), dim=0)
 
-        if random_projection is not None:
+        if random_projection is not None and random_projection != self.model.lm_head.in_features * 2:
+            assert random_projection < self.model.lm_head.in_features * 2, f"projection dimension must be smaller than {self.model.lm_head.in_features * 2}"
             B = torch.cat((self.proj_A, self.proj_B), dim=1)
             torch.manual_seed(random_proj_seed)
             A = torch.randn(random_projection, B.shape[1])
