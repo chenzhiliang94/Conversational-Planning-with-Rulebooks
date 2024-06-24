@@ -28,7 +28,7 @@ class embedding_model_mistral():
     def embed(self, text):
         
         with torch.no_grad():
-            batch_dict = self.tokenizer([text], max_length=self.output_dim, padding=True, truncation=True, return_tensors="pt").to(self.cuda)
+            batch_dict = self.tokenizer([str(text)], max_length=self.output_dim, padding=True, truncation=True, return_tensors="pt").to(self.cuda)
             outputs = self.model(**batch_dict)
             embeddings = self.last_token_pool(outputs.last_hidden_state, batch_dict['attention_mask'])
             
@@ -55,7 +55,7 @@ class embedding_model_nomic():
         # model = AutoModel.from_pretrained('nomic-ai/nomic-embed-text-v1', trust_remote_code=True, rotary_scaling_factor=2)
         self.model.eval()
 
-        encoded_input = self.tokenizer([text], padding=True, truncation=True, return_tensors='pt').to(self.cuda)
+        encoded_input = self.tokenizer([str(text)], padding=True, truncation=True, return_tensors='pt').to(self.cuda)
 
         with torch.no_grad():
             model_output = self.model(**encoded_input)

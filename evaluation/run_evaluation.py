@@ -8,6 +8,9 @@ from agent.Agent import *
 from transformers import AutoTokenizer, BertModel, AutoModel
 from transition_models.transition_model import TransitionModel
 from transition_models.embedding_model import embedding_model_mistral, embedding_model_nomic
+from reward.Embedding_Dummy_Reward import Embedding_Dummy_Reward
+from reward.Human_Length_Reward import Human_Length_Reward
+
 import torch
 from scipy import stats
 import numpy as np
@@ -74,7 +77,6 @@ if agent_ == "pure_offline":
     
 if agent_ == "pure_online":
     pure_online_mcts_agent = OnlineAgent(ReplayBufferDeepQFunction(alpha=0.1, steps_update=100, cuda=torch.device('cuda:'+str(cuda_))), runtime_mcts_search_depth, runtime_mcts_timeout, llm_agent, human, reward_function, search_space="response_space", reward_decay=reward_decay) # use a brand new q function and do mcts during runtime
-    pure_online_mcts_agent = OnlineAgent(ReplayBufferDeepQFunction(steps_update=50, cuda=torch.device('cuda:'+str(cuda_))), runtime_mcts_search_depth, runtime_mcts_timeout, llm_agent, human, reward_function, search_space="response_space", reward_decay=reward_decay) # use a brand new q function and do mcts during runtime
     agent_type.append(agent_)
     agents.append(pure_online_mcts_agent)
 
@@ -102,13 +104,10 @@ if agent_ == "semantic_online":
         print("finished loading from pretrained")
         embed_model = embedding_model_nomic(tokenizer, model, False, torch.device('cuda:'+str(cuda_))) 
 
-
-    def reward_function_dummy(prev_state, action, human_response):
-        return random.randint(0,100)
-
+    reward_function = Embedding_Dummy_Reward()
     transition_model = TransitionModel()
     semanticqfunction = DeepQSemanticFunction(dim=dim, cuda=torch.device('cuda:'+str(cuda_)), steps_update=50)
-    pure_online_agent_semantic_agent = OnlineAgent(semanticqfunction, runtime_mcts_search_depth, runtime_mcts_timeout, llm_agent, human, reward_function_dummy, search_space="semantic_space", transition_model=transition_model, embedding_model=embed_model) # online SEMANTIC space agent
+    pure_online_agent_semantic_agent = OnlineAgent(semanticqfunction, runtime_mcts_search_depth, runtime_mcts_timeout, llm_agent, human, reward_function, search_space="semantic_space", transition_model=transition_model, embedding_model=embed_model) # online SEMANTIC space agent
 
     agent_type.append(agent_)
     agents.append(pure_online_agent_semantic_agent)

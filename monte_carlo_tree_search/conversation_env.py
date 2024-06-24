@@ -29,7 +29,7 @@ class conversation_environment():
         initial_state.depth = 1
         return initial_state
         
-    def get_actions(self, state):
+    def get_actions(self, state : conversation_state):
         historical_context = state.conversation
         if historical_context in self.state_to_action_map:
             actions = self.state_to_action_map[historical_context]

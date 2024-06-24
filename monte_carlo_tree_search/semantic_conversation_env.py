@@ -26,8 +26,7 @@ class semantic_conversation_environment():
     def get_initial_state(self):
         print("getting initial state...")
         with torch.no_grad():
-            initial_state = str(self.initial_state)
-            initial_embedding = self.embedding_model.embed(initial_state)
+            initial_embedding = self.embedding_model.embed(self.initial_state)
             initial_embedding = initial_embedding.cpu().numpy()
             
             conversation_semantics = tuple(initial_embedding)

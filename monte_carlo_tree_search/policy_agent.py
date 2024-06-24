@@ -105,47 +105,47 @@ class OnlineAgent(LearntAgent):
         print("generating action in realtime...")
         if self.search_space=="response_space":
             conversation_env = conversation_environment(self.human_simulator, self.llm_agent, state.conversation, max_depth=self.search_depth, reward_function=self.reward_function_for_mcts)
+            #conversation_env.get_actions
         elif self.search_space=="semantic_space":
             conversation_env = semantic_conversation_environment(embedding_model=self.embedding_model, transition_model=self.transition_model, initial_state=state.conversation, max_depth=self.search_depth, reward_function=self.reward_function_for_mcts)
         print("performing MCTS search...")
         mcts = SingleAgentMCTS(conversation_env, self.qfunction, UpperConfidenceBounds(), terminating_heuristic_q_function=self.terminating_heuristic_q_function)
         mcts.mcts(timeout=self.mcts_time_limit)
         self.qfunction = mcts.qfunction # qfunction learnt after performing mcts
-        possible_actions = mcts.initial_actions 
+
         print("bandit dict after mcts: ", mcts.bandit.times_selected)
         print("getting best action...")
         # get best action from learnt q function after mcts
         if self.search_space=="response_space":
             print("getting best action from Q function...")
             print("current state: ", state)
+            possible_actions = mcts.initial_actions 
             print("proposed actions: \n", possible_actions)
             best_action, best_reward = self.qfunction.get_max_q(state, possible_actions)
-            
+        
         # if semantic space used, some semantic projection is needed
         elif self.search_space=="semantic_space":
             
             # get conversation semantics
-            truncated_state = state.conversation
-            output = self.embedding_model.embed(truncated_state)
+            truncated_state = state.conversation # actual convo
+            output = self.embedding_model.embed(str(truncated_state)) # embedding
             
-            conversation_semantics = tuple(output.detach().numpy())
+            conversation_semantics = tuple(output.cpu().detach().numpy())
             semantic_state = copy.deepcopy(state)
             semantic_state.conversation = conversation_semantics
             
             # get action semantics
             action_semantics = []
+            # get real actions
+            conversation_env = conversation_environment(self.human_simulator, self.llm_agent, state.conversation, max_depth=self.search_depth, reward_function=self.reward_function_for_mcts)
+            possible_actions = conversation_env.get_actions(state)
             for action in possible_actions:
-                concatenated_convo = truncated_state + action # string
-                output = self.embedding_model.embed(concatenated_convo)
-                concatenated_convo = truncated_state + action # string
-                encoded_input = self.tokenizer(concatenated_convo, return_tensors='pt')
-                if len(encoded_input) > 512:
-                    encoded_input = encoded_input[-512:]
-                output = self.embedding_model(**encoded_input).last_hidden_state
+                concatenated_convo = truncated_state + action # conversation
+                output = self.embedding_model.embed(str(concatenated_convo)) # embedding
                 # output is the semantics after combining action with state.
                 # we deduct from the output the state semantics to obtain a directional vector which
                 # represents the action semantics
-                action_semantic = tuple(output.detach().numpy())
+                action_semantic = tuple(output.cpu().detach().numpy())
                 action_semantic = tuple([x1-x2 for x1,x2 in zip(list(action_semantic),list(conversation_semantics))])
                 action_semantics.append(action_semantic)
 

@@ -3,7 +3,7 @@ llm_model:
   type: local
   model_config:
     pretrained_model_name_or_path: meta-llama/Meta-Llama-3-8B-Instruct
-    device_map: 1
+    device_map: 2
     load_in_8bit: True
     attn_implementation: "flash_attention_2"
   generation_config:
@@ -25,7 +25,7 @@ human_model:
   type: local
   model_config:
     pretrained_model_name_or_path: meta-llama/Meta-Llama-3-8B-Instruct
-    device_map: 1
+    device_map: 2
     load_in_8bit: True
     attn_implementation: "flash_attention_2"
   generation_config:
