@@ -33,7 +33,8 @@ class Local_LLM(LLM):
             chat, 
             tokenize = True, add_generation_prompt = True, return_tensors = "pt", return_attention_mask = True, return_dict = True
             ).to(self.model.device)
-        output = self.model.generate(**tokens, **self.generation_config, **kwargs)
+        with torch.no_grad():
+            output = self.model.generate(**tokens, **self.generation_config, **kwargs)
         output = output[:, tokens["input_ids"].shape[-1]:]    # Only return generated tokens
         decoded_output = self.tokenizer.batch_decode(output, skip_special_tokens=True)
         return decoded_output

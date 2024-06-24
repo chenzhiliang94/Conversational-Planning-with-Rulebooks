@@ -35,8 +35,8 @@ class Llama_2_Guard_Reward(Base_Reward):
         safe_unsafe_matrix = head_weights[self.safe_unsafe_indices, :].t().cpu()
         category_matrix = head_weights[self.category_indices, :].t().cpu()
 
-        zero_pad_A = torch.zeros((head_weights.shape[1], len(self.safe_unsafe_indices)))
-        zero_pad_B = torch.zeros((head_weights.shape[1], len(self.category_indices)))
+        zero_pad_A = torch.zeros((self.model.lm_head.in_features, len(self.safe_unsafe_indices)))
+        zero_pad_B = torch.zeros((self.model.lm_head.in_features, len(self.category_indices)))
         self.proj_A = torch.cat((safe_unsafe_matrix, zero_pad_A), dim=0)
         self.proj_B = torch.cat((zero_pad_B, category_matrix), dim=0)
 
@@ -47,6 +47,7 @@ class Llama_2_Guard_Reward(Base_Reward):
             self.projection_mat = torch.linalg.lstsq(A.T, B.T, driver="gelsd").solution.t().to(self.model.device)
             self.proj_A = A[:, :len(self.safe_unsafe_indices)]
             self.proj_B = A[:, len(self.safe_unsafe_indices):]
+        torch.cuda.empty_cache()
 
     # Get the probability of the chat being safe
     def get_safe_prob(self, chat : List[dict] | List[List[dict]]) -> float | list[float]:
@@ -76,7 +77,8 @@ class Llama_2_Guard_Reward(Base_Reward):
         input_ids_unsafe = torch.cat((input_ids, self.unsafe_prompt.repeat(input_ids.shape[0],1)), dim=1)
 
         # Generate unsafe category probabilities
-        last_embeddings = self.model.model(input_ids=input_ids_unsafe).last_hidden_state.detach().float()
+        with torch.no_grad():
+            last_embeddings = self.model.model(input_ids=input_ids_unsafe).last_hidden_state.detach().float()
         embedding = torch.cat((last_embeddings[:,-4,:], last_embeddings[:,-1,:]), dim=-1)   # Get embedding for safe/unsafe and unsafe category
         if hasattr(self, 'projection_mat'):
             embedding = embedding @ self.projection_mat
