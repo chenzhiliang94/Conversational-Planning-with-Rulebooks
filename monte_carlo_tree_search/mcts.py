@@ -101,10 +101,6 @@ class MCTS:
                 do_nothing_count+=1
                 print("fully expanded tree. using simple back propagation: ", do_nothing_count)
                 selected_node.back_propagate_simple(0.0)
-            # else: # if we have maxed out the tree already
-            #     child = selected_node.expand()
-            #     reward = self.simulate(child)
-            #     print("cumulative reward after simulation: ", reward)
             
             simulation_rollout_count +=1
             print("time taken for one iteration of mcts: ", time.time() - current_time)

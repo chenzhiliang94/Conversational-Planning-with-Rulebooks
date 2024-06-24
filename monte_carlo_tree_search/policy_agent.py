@@ -62,7 +62,7 @@ class greedy_reward_generator():
         for action in possible_actions:
             print("candidate action: ", action)
             human_responses = self.human.sample_actions(convo + action)
-            
+            print(human_responses)
             reward_to_be_averaged = []
             for response in human_responses:
                 reward_to_be_averaged.append(self.reward_function(response))

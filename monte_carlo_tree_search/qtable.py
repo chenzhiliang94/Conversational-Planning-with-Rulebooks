@@ -297,21 +297,29 @@ class ReplayBufferDeepQFunction(QFunction, DeepAgent):
         self.q_network.train()
         # update based on this specific experience
         start_time = time.time()
+        optimiser = Adam(self.q_network.parameters(), lr= self.alpha * self.alpha * (1/visits)**2)
         for x in range(self.steps_update):
             optimiser.zero_grad()  # Reset gradients to zero
             output = self.q_network(**encoded_input, labels = torch.tensor(reward, dtype=torch.float).to(self.cuda))
+            if output.loss == torch.tensor(float('nan')): # if loss becomes nan, reduce LR
+                optimiser = Adam(self.q_network.parameters(), lr= 0.1 * self.alpha * (1/visits)**2)
+                continue
             output.loss.backward()
             optimiser.step()  # Do a gradient descent step with the optimiser
+            print("loss in standard update: ", output.loss)
         print("time taken for update Q", time.time()-start_time)
         start_time = time.time()
         
         # update based on replay buffer
-        for x in range(50):
+        optimiser = Adam(self.q_network.parameters(), lr= 0.3* self.alpha * (1/visits)**2)
+        for x in range(self.steps_update):
             optimiser.zero_grad()  # Reset gradients to zero
             output = self.q_network(**self.replay_buffer, labels = torch.tensor(self.past_rewards, dtype=torch.float).view(len(self.past_rewards), 1).to(self.cuda))
-            output = self.q_network(**self.replay_buffer, labels = torch.tensor(self.past_rewards, dtype=torch.float).to(self.cuda))
-            loss = criterion(output.logits, torch.tensor(self.past_rewards, dtype=torch.float).view(len(self.past_rewards), 1).to(self.cuda))
-            loss.backward()
+            if output.loss.detach() == torch.tensor(float('nan')): # if loss becomes nan, reduce LR
+                optimiser = Adam(self.q_network.parameters(), lr= 0.5 * self.alpha * (1/visits)**2)
+                continue
+            output.loss.backward()
+            print("loss in replay buffer: ", output.loss)
             optimiser.step()  # Do a gradient descent step with the optimiser
         print("time taken for update Q with replay buffer: ", time.time()-start_time)
     
