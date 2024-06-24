@@ -2,6 +2,9 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor
 from transformers import AutoTokenizer, AutoModel
+from reward.Llama_2_Guard_Reward import Llama_2_Guard_Reward
+from typing import List
+from agent.Conversation import Conversation
 
 class embedding_model_mistral():
     def __init__(self, tokenizer, model, to_normalize = False, cuda = torch.device('cuda:5')) -> None:
@@ -64,3 +67,10 @@ class embedding_model_nomic():
         return embeddings[0]
         
         #embeddings = F.normalize(embeddings, p=2, dim=1)
+
+class embedding_model_llama(Llama_2_Guard_Reward):
+    def __init__(self, tokenizer = None, model = None, output_dim = 1024, to_normalize=None, cuda = torch.device('cuda:5'), seed = 42) -> None:
+        super().__init__(
+            model = model, device_map = cuda, random_projection = None, random_proj_seed = seed
+            )
+        self.output_dim = output_dim
