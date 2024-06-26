@@ -16,13 +16,12 @@ class LLM(ABC):
         chat = convo.create_chat()
 
         if len(self.system_prompt) > 0:
-            if chat[-1]["role"] == "assistant":
-                chat[-1]["content"] = self.system_prompt + "\n\n" + chat[-1]["content"]
-                chat = chat[:-1]
-
-            if self.tokenizer_has_system_prompt:
-                chat.insert(0,{"role": "system", "content":self.system_prompt})
-            else:
-                chat.insert(0,{"role": "assistant", "content":self.system_prompt})
+            if chat[0]["role"] == "assistant":
+                chat[0]["content"] = self.system_prompt + "\n\n" + chat[0]["content"]
+                chat = chat[1:]
+            elif self.tokenizer_has_system_prompt:
+                    chat.insert(0,{"role": "system", "content":self.system_prompt})
+            # else:
+            #     chat.insert(0,{"role": "assistant", "content":self.system_prompt})
 
         return chat
