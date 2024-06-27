@@ -7,3 +7,4 @@ torchvision
 pandas
 graphviz
 tiktoken
+transformers
