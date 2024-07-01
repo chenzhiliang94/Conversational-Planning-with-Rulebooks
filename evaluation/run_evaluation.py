@@ -30,7 +30,7 @@ parser.add_argument("--mcts_time",  help="mcts search time budget", default=100)
 parser.add_argument("--pretrained_q_function",  help="pre-learnt q function for heuristic or initialization", default="model_pretrained_qfn")
 parser.add_argument("--result_file",  help="result_file_name", default="evaluation_results")
 parser.add_argument("--agent",  help="agent type")
-parser.add_argument("--embedding", default="mistral")
+parser.add_argument("--embedding", default="None")
 parser.add_argument("--cuda_for_q_and_embedding",  help="cuda")
 parser.add_argument("--cuda_for_llm",  help="cuda")
 parser.add_argument("--reward_decay",  default=0.9)
@@ -121,10 +121,11 @@ if agent_ == "semantic_online":
         embed_model = embedding_model_llama(cuda=torch.device('cuda:'+str(cuda_q_embedding)))
         dim = embed_model.output_dim
 
-    reward_function = Embedding_Dummy_Reward()
-    transition_model = TransitionModel()
-    semanticqfunction = DeepQSemanticFunction(dim=dim, cuda=torch.device('cuda:'+str(cuda_q_embedding)), steps_update=50)
-    pure_online_agent_semantic_agent = OnlineAgent(semanticqfunction, runtime_mcts_search_depth, runtime_mcts_timeout, llm_agent, human, reward_function, search_space="semantic_space", transition_model=transition_model, embedding_model=embed_model) # online SEMANTIC space agent
+        if reward_func == "length":
+            reward_function = Embedding_Dummy_Reward
+        transition_model = TransitionModel()
+        semanticqfunction = DeepQSemanticFunction(dim=dim, cuda=torch.device('cuda:'+str(cuda_q_embedding)), steps_update=50)
+        pure_online_agent_semantic_agent = OnlineAgent(semanticqfunction, runtime_mcts_search_depth, runtime_mcts_timeout, llm_agent, human, reward_function, search_space="semantic_space", transition_model=transition_model, embedding_model=embed_model) # online SEMANTIC space agent
 
     agent_type.append(agent_)
     agents.append(pure_online_agent_semantic_agent)

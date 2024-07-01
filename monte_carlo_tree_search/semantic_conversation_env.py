@@ -4,7 +4,7 @@ from reward.rewards_import import *
 
 class conversation_semantic_state():
     depth = 0
-    def __init__(self, conversation) -> None:
+    def __init__(self, conversation : tuple) -> None:
         self.conversation = conversation
         self.response = conversation
         self.depth = 2
@@ -35,7 +35,7 @@ class semantic_conversation_environment():
             initial_state.depth = 1
             return initial_state
         
-    def get_actions(self, state):
+    def get_actions(self, state : conversation_semantic_state) -> tuple:
         historical_context = state.conversation
         
         if historical_context in self.state_to_action_map:
@@ -51,7 +51,7 @@ class semantic_conversation_environment():
             return True
         return False
     # H_current, L, H_current + L + H_next
-    def get_reward(self, prev_state, action, new_state):
+    def get_reward(self, prev_state : conversation_semantic_state, action : tuple, new_state : conversation_semantic_state):
         return self.reward_function(prev_state, action, new_state)
     
     # get action in simulation stage. So no storing of actions here
@@ -66,15 +66,15 @@ class semantic_conversation_environment():
         # old way: get responses explicitly from model 
         historical_context = state.conversation
         possible_results = self.transition_model.transit(historical_context, action)
-        result_human_response = random.choice(possible_results) 
+        result_state_after_human_response = random.choice(possible_results) 
         
-        new_state = conversation_semantic_state(result_human_response)
+        new_state = conversation_semantic_state(result_state_after_human_response)
         new_state.depth = state.depth + 2
         
         # new way: immediately jump from s_old,a -> s_new with transition model
         # new_state = self.transition_model.transit(state, action)
         
-        return new_state, self.get_reward(state, action, new_state)
+        return new_state, self.get_reward(state.conversation, action, new_state.conversation)
         
     # during selection, we already have defined action to possible response mapping. So the transition probability is already approximated
     def execute_in_selection(self, state, action):
@@ -88,7 +88,7 @@ class semantic_conversation_environment():
         selected_state = conversation_semantic_state(result_human_response)
         selected_state.depth = state.depth + 2
         
-        return selected_state, self.get_reward(state, action, selected_state)
+        return selected_state, self.get_reward(state.conversation, action, selected_state.conversation)
     
     # during expansion, we are trying out an action that is definitely not used before at this state
     def execute_in_expansion(self, state, action):
@@ -100,13 +100,13 @@ class semantic_conversation_environment():
         self.state_action_to_response_map[(historical_context, action)] = possible_responses
         
         # choose a random state to happen. TODO: use a transition probability
-        result_human_response = random.choice(list(possible_responses))
+        result_state_after_human_response = random.choice(list(possible_responses))
         
         # generate a state
-        expanded_state = conversation_semantic_state(result_human_response)
+        expanded_state = conversation_semantic_state(result_state_after_human_response)
         expanded_state.depth = state.depth + 2
         
-        return expanded_state, self.get_reward(state, action, expanded_state)
+        return expanded_state, self.get_reward(state.conversation, action, expanded_state.conversation)
         
     def get_discount_factor(self):
         return 1.0

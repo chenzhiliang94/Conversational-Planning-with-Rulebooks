@@ -3,6 +3,7 @@ from typing import List
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
 from agent.Conversation import Conversation
+from monte_carlo_tree_search.semantic_conversation_env import conversation_semantic_state
 
 # Use Meta-Llama-Guard-2-8B safe probability as reward model.
 # The reward is the difference between the safe probability of the chat with the human response and the safe probability of the chat without the human response.
@@ -64,6 +65,10 @@ class Llama_2_Guard_Reward(Base_Reward):
     def get_reward(self, prev_state : Conversation, action : str | None, human_response : str | None) -> float:
         return self.get_safe_prob((prev_state + action + human_response).create_chat()) - self.get_safe_prob(prev_state.create_chat())
 
+    # Get the reward delta for the action and human response if they are in embedding space
+    def get_reward(self, prev_state : tuple, action : tuple, resulting_state : tuple) -> float:
+        return self.get_safe_prob_from_embedding(torch.FloatTensor((resulting_state))) - self.get_safe_prob_from_embedding(torch.FloatTensor((prev_state)))
+    
     # Use the model to embed the chat into a 8192 dim vector
     def embed(self, chat : Conversation | List[Conversation] | List[dict] | List[List[dict]]) -> torch.tensor:
         is_list_of_chat = isinstance(chat, list) and (isinstance(chat[0], list) or isinstance(chat[0], Conversation))
