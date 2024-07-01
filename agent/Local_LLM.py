@@ -37,4 +37,6 @@ class Local_LLM(LLM):
             output = self.model.generate(**tokens, **self.generation_config, **kwargs)
         output = output[:, tokens["input_ids"].shape[-1]:]    # Only return generated tokens
         decoded_output = self.tokenizer.batch_decode(output, skip_special_tokens=True)
+        decoded_output = (list(set(decoded_output))) # remove duplicates
+        print("generated LLM output after removing duplicate: ", len(decoded_output))
         return decoded_output

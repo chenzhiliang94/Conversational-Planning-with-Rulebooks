@@ -44,9 +44,9 @@ class conversation_environment():
             return True
         return False
     
-    def get_reward(self, prev_state, action, human_response):
+    def get_reward(self, prev_state : Conversation, action : str, human_response : str):
         return self.reward_function(prev_state, action, human_response)
-    
+
     # get action in simulation stage. So no storing of actions here
     def get_actions_in_simulation(self, state):
         historical_context = state.conversation
@@ -58,13 +58,14 @@ class conversation_environment():
         historical_context = state.conversation
 
         possible_responses = self.human_env.sample_actions(historical_context + action)
+        print("possible human responses: ", possible_responses)
         result_human_response = random.choice(possible_responses)
         new_historical_context = historical_context  + action
         new_historical_context = new_historical_context + result_human_response
         selected_state = conversation_state(result_human_response, new_historical_context)
         selected_state.depth = state.depth + 2
         
-        return selected_state, self.get_reward(state, action, result_human_response)
+        return selected_state, self.get_reward(state.conversation, action, result_human_response)
         
     # during selection, we already have defined action to possible response mapping. So the transition probability is already approximated
     def execute_in_selection(self, state, action):
@@ -84,7 +85,7 @@ class conversation_environment():
         # get reward; calculate reward value of result_response using some metric
         reward = 0.0 # actually, dependent only on action
         
-        return selected_state, self.get_reward(state, action, result_human_response)
+        return selected_state, self.get_reward(state.conversation, action, result_human_response)
     
     # during expansion, we are trying out an action that is definitely not used before at this state
     def execute_in_expansion(self, state, action):
@@ -94,11 +95,10 @@ class conversation_environment():
         # given a state, and action, how will a human respond? We shall find out using a simulator and store the possible responses in our dictionary
         input_to_human_env = historical_context + action
         possible_responses = self.human_env.sample_actions(input_to_human_env)
-        assert not (historical_context + action) in self.state_action_to_response_map
+        if (input_to_human_env) in self.state_action_to_response_map:
+            print("something wrong! when expanding somehow the resulting state was already seen before, but its ok we will re-add.")
         self.state_action_to_response_map[(input_to_human_env)] = possible_responses
-        
-        possible_responses = self.state_action_to_response_map[(historical_context + action)]
-        
+
         # choose a random state to happen. TODO: use a transition probability
         result_human_response = random.choice(list(possible_responses))
         
@@ -107,7 +107,7 @@ class conversation_environment():
         expanded_state = conversation_state(result_human_response, new_historical_context)
         expanded_state.depth = state.depth + 2
         
-        return expanded_state, self.get_reward(state, action, result_human_response)
+        return expanded_state, self.get_reward(state.conversation, action, result_human_response)
         
     def get_discount_factor(self):
         return self.reward_decay

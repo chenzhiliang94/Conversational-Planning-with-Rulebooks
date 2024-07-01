@@ -44,7 +44,6 @@ class Agent:
         Returns:
             A list of list of strings.
         """
-
         convos_is_list = isinstance(convos, list)
         if not convos_is_list:
             convos = [convos]
@@ -54,7 +53,6 @@ class Agent:
         for convo in convos:
             chat = self.model.apply_chat_format(convo)
             chats.append(chat)
-
         if DEBUG:
             print("generated prompts")
             print(chats)
@@ -73,10 +71,11 @@ class Agent:
             generated_text = generated_text[0]
         return generated_text
 
-def create_human_and_llm(human_model_to_use="human_model", llm_model_to_use ="llm_model",**kwargs) -> Tuple[Agent, Agent]:
+def create_human_and_llm(human_model_to_use="human_model", llm_model_to_use ="llm_model", cuda = "",**kwargs) -> Tuple[Agent, Agent]:
     with open("agent/llm_config.yaml", "r") as f:
         llm_config = yaml.full_load(f)
-
+    llm_config[llm_model_to_use]["model_config"]["device_map"] = cuda
+    llm_config[human_model_to_use]["model_config"]["device_map"] = cuda
     human_agent = Agent(HUMAN, llm_config[human_model_to_use], **kwargs)
     if llm_config[human_model_to_use]["model_config"].copy().pop("device_map", None) == llm_config[llm_model_to_use]["model_config"].copy().pop("device_map", None):  # Use the same model for both human and llm
         llm_agent = Agent(LLM, llm_config[llm_model_to_use], model = human_agent.model.model, tokenizer = human_agent.model.tokenizer, **kwargs)

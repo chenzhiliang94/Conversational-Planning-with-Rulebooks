@@ -70,7 +70,7 @@ class SingleAgentNode(Node):
 
         Node.visits[self.state] = Node.visits[self.state] + 1
         Node.visits[(self.state, action)] = Node.visits[(self.state, action)] + 1
-
+        
         q_value = self.qfunction.get_q_value(self.state, action)
         delta = (1 / (Node.visits[(self.state, action)])) * (
             reward - self.qfunction.get_q_value(self.state, action)
@@ -137,3 +137,13 @@ class SingleAgentMCTS(MCTS):
         return SingleAgentNode(
             self.mdp, None, self.mdp.get_initial_state(), self.qfunction, self.bandit
         )
+
+
+# # response 2
+# qfunction.update(conversation_state(starter_1, Conversation(starter_1)), response_1, 1,1, 300)
+# # response 1
+# qfunction.update(conversation_state(starter_1, Conversation(starter_1)), response_2, 1,1, 140)
+# # # response 1
+# qfunction.update(conversation_state(starter_1, Conversation(starter_1)), response_3, 1,1, 270)
+# # # response 1
+# qfunction.update(conversation_state(starter_1, Conversation(starter_1)), response_4, 1,1, 200)

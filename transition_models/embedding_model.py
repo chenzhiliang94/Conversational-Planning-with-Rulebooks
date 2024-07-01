@@ -71,6 +71,6 @@ class embedding_model_nomic():
 class embedding_model_llama(Llama_2_Guard_Reward):
     def __init__(self, tokenizer = None, model = None, output_dim = 1024, to_normalize=None, cuda = torch.device('cuda:5'), seed = 42) -> None:
         super().__init__(
-            model = model, device_map = cuda, random_projection = None, random_proj_seed = seed
+            model = model, device_map = cuda, random_projection = output_dim, random_proj_seed = seed
             )
         self.output_dim = output_dim

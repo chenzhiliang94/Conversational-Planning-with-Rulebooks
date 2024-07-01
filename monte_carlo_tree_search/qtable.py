@@ -297,7 +297,7 @@ class ReplayBufferDeepQFunction(QFunction, DeepAgent):
         self.q_network.train()
         # update based on this specific experience
         start_time = time.time()
-        optimiser = Adam(self.q_network.parameters(), lr= self.alpha * self.alpha * (1/visits)**2)
+        optimiser = Adam(self.q_network.parameters(), lr= self.alpha * (1/visits)**2)
         for x in range(self.steps_update):
             optimiser.zero_grad()  # Reset gradients to zero
             output = self.q_network(**encoded_input, labels = torch.tensor(reward, dtype=torch.float).to(self.cuda))

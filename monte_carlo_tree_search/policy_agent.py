@@ -30,6 +30,7 @@ class RandomAgent(LearntAgent):
 
     def generate_action(self, state):
         possible_actions = self.action_generator.sample_actions(state.conversation)
+        print("possible actions random agent proposed: ", possible_actions)
         best_action = random.choice(possible_actions)
         print("random action selected by random agent: ", best_action)
         return best_action
@@ -58,15 +59,16 @@ class greedy_reward_generator():
     def select(self, state, possible_actions):
         print("selecting greedy action...")
         convo = state.conversation
+        print("current state: ", convo)
         action_reward = []
         for action in possible_actions:
             print("candidate action: ", action)
             human_responses = self.human.sample_actions(convo + action)
-            print(human_responses)
             reward_to_be_averaged = []
             for response in human_responses:
+                print("one step greedy lookahead reward: ", self.reward_function(response))
                 reward_to_be_averaged.append(self.reward_function(response))
-            print("greedy one step reward: ", np.mean(reward_to_be_averaged))
+            print("mean greedy one step reward: ", np.mean(reward_to_be_averaged))
             action_reward.append(np.mean(reward_to_be_averaged))
         best_action_idx = action_reward.index(max(action_reward))
         best_action = possible_actions[best_action_idx]
@@ -128,7 +130,8 @@ class OnlineAgent(LearntAgent):
             
             # get conversation semantics
             truncated_state = state.conversation # actual convo
-            output = self.embedding_model.embed(str(truncated_state)) # embedding
+            print(truncated_state)
+            output = self.embedding_model.embed(truncated_state) # embedding
             
             conversation_semantics = tuple(output.cpu().detach().numpy())
             semantic_state = copy.deepcopy(state)
@@ -141,7 +144,7 @@ class OnlineAgent(LearntAgent):
             possible_actions = conversation_env.get_actions(state)
             for action in possible_actions:
                 concatenated_convo = truncated_state + action # conversation
-                output = self.embedding_model.embed(str(concatenated_convo)) # embedding
+                output = self.embedding_model.embed(concatenated_convo) # embedding
                 # output is the semantics after combining action with state.
                 # we deduct from the output the state semantics to obtain a directional vector which
                 # represents the action semantics
@@ -179,7 +182,7 @@ def evaluate_agent(agent : LearntAgent, env, starting_state, number_replies):
     return cumulative_reward
 
 # evaluate an agent with the mdp.
-def run_evaluations(agent, type, env, evaluation_starters, number_replies):
+def run_evaluations(agent, type, env, evaluation_starters, number_replies, trials):
     result_row = []
     for evaluation_starter in evaluation_starters:
         initial_state = conversation_state((evaluation_starter), Conversation(evaluation_starter))
@@ -187,7 +190,7 @@ def run_evaluations(agent, type, env, evaluation_starters, number_replies):
         
         # repeated trials
         rewards = []
-        for x in range(5):
+        for x in range(trials):
             if hasattr(agent, 'qfunction'):
                 agent.qfunction.reset()
             print("trial: ", x, " of evaluation for agent of type:  ", type)

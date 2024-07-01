@@ -50,7 +50,7 @@ class semantic_conversation_environment():
         if state.depth >= self.max_depth:
             return True
         return False
-    
+    # H_current, L, H_current + L + H_next
     def get_reward(self, prev_state, action, new_state):
         return self.reward_function(prev_state, action, new_state)
     
