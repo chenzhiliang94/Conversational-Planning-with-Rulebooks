@@ -51,7 +51,7 @@ class semantic_conversation_environment():
             return True
         return False
     # H_current, L, H_current + L + H_next
-    def get_reward(self, prev_state : conversation_semantic_state, action : tuple, new_state : conversation_semantic_state):
+    def get_reward(self, prev_state : tuple, action : tuple, new_state : tuple):
         return self.reward_function(prev_state, action, new_state)
     
     # get action in simulation stage. So no storing of actions here
