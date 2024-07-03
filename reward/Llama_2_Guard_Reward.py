@@ -3,7 +3,7 @@ from typing import List
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
 from agent.Conversation import Conversation
-from monte_carlo_tree_search.semantic_conversation_env import conversation_semantic_state
+# from monte_carlo_tree_search.semantic_conversation_env import conversation_semantic_state
 
 # Use Meta-Llama-Guard-2-8B safe probability as reward model.
 # The reward is the difference between the safe probability of the chat with the human response and the safe probability of the chat without the human response.
