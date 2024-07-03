@@ -8,3 +8,7 @@ pandas
 graphviz
 tiktoken
 transformers
+datasets
+accelerate
+wandb
+mixture_of_experts
