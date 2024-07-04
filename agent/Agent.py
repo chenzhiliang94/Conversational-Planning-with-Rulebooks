@@ -77,7 +77,7 @@ def create_human_and_llm(human_model_to_use="human_model", llm_model_to_use ="ll
     llm_config[llm_model_to_use]["model_config"]["device_map"] = cuda
     llm_config[human_model_to_use]["model_config"]["device_map"] = cuda
     human_agent = Agent(HUMAN, llm_config[human_model_to_use], **kwargs)
-    if llm_config[human_model_to_use]["model_config"].copy().pop("device_map", None) == llm_config[llm_model_to_use]["model_config"].copy().pop("device_map", None):  # Use the same model for both human and llm
+    if isinstance(human_agent.model, Local_LLM) and llm_config[human_model_to_use]["model_config"].copy().pop("device_map", None) == llm_config[llm_model_to_use]["model_config"].copy().pop("device_map", None):  # Use the same model for both human and llm
         llm_agent = Agent(LLM, llm_config[llm_model_to_use], model = human_agent.model.model, tokenizer = human_agent.model.tokenizer, **kwargs)
     else:
         llm_agent = Agent(LLM, llm_config[llm_model_to_use], **kwargs)

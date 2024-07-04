@@ -29,6 +29,8 @@ class Local_LLM(LLM):
         self.system_prompt = model_config["sys_prompt"]
 
     def generate(self, chat : List[dict], **kwargs) -> List[str]:
+        print("generating responses by local LLM: ")
+        print(chat)
         tokens = self.tokenizer.apply_chat_template(
             chat, 
             tokenize = True, add_generation_prompt = True, return_tensors = "pt", return_attention_mask = True, return_dict = True

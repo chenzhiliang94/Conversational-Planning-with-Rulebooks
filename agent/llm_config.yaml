@@ -1,5 +1,5 @@
 name: Llama-3
-llm_model:
+human_model:
   type: local
   model_config:
     pretrained_model_name_or_path: meta-llama/Meta-Llama-3-8B-Instruct
@@ -20,8 +20,8 @@ llm_model:
     temperature: 1.0
     top_p: 1.0
     repetition_penalty : 1.0  # 1.0 means no penalty.
-  sys_prompt: "Imagine you are a human trying to converse with a language model. Please continue the following conversation by giving a random response. Keep your responses not too long. Try to ask clarifying questions if possible."
-human_model:
+  sys_prompt: "Pretend you are a human trying to converse with a friend. Please continue the following conversation by giving a random response. Keep your responses not too long."
+llm_model:
   type: local
   model_config:
     pretrained_model_name_or_path: meta-llama/Meta-Llama-3-8B-Instruct
@@ -42,21 +42,23 @@ human_model:
     temperature: 1.0
     top_p: 1.0
     repetition_penalty : 1.0  # 1.0 means no penalty
-  sys_prompt: "You are an AI companion trying to converse with a human being. Please continue the following conversation by giving a random response. Keep your responses relatively short."
+  sys_prompt: "Pretend You are a companion trying to converse with a friend. Please continue the following conversation by giving a random response. Keep your responses relatively short."
 
+eval_model:
+  type: online
+  name: gpt-3.5-turbo-0125
+  device: 0
+  model_config:
+    device_map: 0
+    pretrained_model_name_or_path: "chatgpt"
+  generation_config:
+    max_tokens: 30        # Maximum number of new tokens
+    n: 2                  # Number of chat completions
+    temperature: 1
+    frequency_penalty: 0  # Between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.
+    presence_penalty: 0   # Between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.
+  sys_prompt: "Imagine you are a friend of another person talking to you. Please continue the following conversation by giving a random response. Keep your responses not too long."
 
-# Sample online model
-# llm_model:
-#   type: online
-#   name: gpt-3.5-turbo-0125
-#   device: 0
-#   generation_config:
-#     max_tokens: 30        # Maximum number of new tokens
-#     n: 2                  # Number of chat completions
-#     temperature: 1
-#     frequency_penalty: 0  # Between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.
-#     presence_penalty: 0   # Between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.
-#   sys_prompt: "Imagine you are a human trying to converse with a language model. Please continue the following conversation by giving a random response. Keep your responses not too long."
 # Sample local model
 
 # human_model:

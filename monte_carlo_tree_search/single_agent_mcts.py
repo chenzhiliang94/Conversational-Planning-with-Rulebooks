@@ -71,11 +71,12 @@ class SingleAgentNode(Node):
         Node.visits[self.state] = Node.visits[self.state] + 1
         Node.visits[(self.state, action)] = Node.visits[(self.state, action)] + 1
         
-        q_value = self.qfunction.get_q_value(self.state, action)
-        delta = (1 / (Node.visits[(self.state, action)])) * (
-            reward - self.qfunction.get_q_value(self.state, action)
-        )
-        
+        # q_value = self.qfunction.get_q_value(self.state, action)
+        # delta = (1 / (Node.visits[(self.state, action)])) * (
+        #     reward - self.qfunction.get_q_value(self.state, action)
+        # )
+        delta=0.0
+        print("updating Q-function with reward: ", reward)
         self.qfunction.update(self.state, action, delta, (1 / (Node.visits[(self.state, action)])), reward)
 
         if self.parent != None:

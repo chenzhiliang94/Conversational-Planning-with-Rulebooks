@@ -15,6 +15,8 @@ class Online_LLM(LLM):
         self.client = OpenAI()
 
     def generate(self, chat : List[dict], **kwargs) -> List[str]:
+        print("generating responses in chatgpt。。。")
+        print(chat)
         output = self.client.chat.completions.create(
             model=self.model_name,
             messages=chat,

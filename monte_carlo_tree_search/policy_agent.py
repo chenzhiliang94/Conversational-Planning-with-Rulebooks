@@ -201,5 +201,5 @@ def run_evaluations(agent, type, env, evaluation_starters, number_replies, trial
         print("all rewards from trials: ", rewards)
         print("mean: ", np.mean(rewards))
         print("std error: ", stats.sem(rewards))
-        result_row.append((int(np.mean(rewards)), int(stats.sem(rewards))))
+        result_row.append(((np.mean(rewards)), (stats.sem(rewards))))
     return result_row

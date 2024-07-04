@@ -37,8 +37,10 @@ parser.add_argument("--reward_decay",  default=0.9)
 parser.add_argument("--trials",  help="trials")
 parser.add_argument("--reward_func", help="reward")
 parser.add_argument("--lr", default=0.00001)
+parser.add_argument("--evaluation_mode", default="None")
 args = vars(parser.parse_args())
 
+evaluation_mode = args["evaluation_mode"]
 trials = int(args["trials"])
 reward_func = args["reward_func"]
 evaluation_output = args["result_file"]
@@ -122,7 +124,7 @@ if agent_ == "semantic_online":
         dim = embed_model.output_dim
 
         if reward_func == "length":
-            reward_function = Embedding_Dummy_Reward
+            reward_function = Embedding_Dummy_Reward()
         transition_model = TransitionModel()
         semanticqfunction = DeepQSemanticFunction(dim=dim, cuda=torch.device('cuda:'+str(cuda_q_embedding)), steps_update=50)
         pure_online_agent_semantic_agent = OnlineAgent(semanticqfunction, runtime_mcts_search_depth, runtime_mcts_timeout, llm_agent, human, reward_function, search_space="semantic_space", transition_model=transition_model, embedding_model=embed_model) # online SEMANTIC space agent
@@ -131,8 +133,11 @@ if agent_ == "semantic_online":
     agents.append(pure_online_agent_semantic_agent)
         
 # create the mdp environment for evaluation
-evaluation_conversation_env = conversation_environment(human, llm_agent, "", max_depth=evaluation_action_depth*2, reward_function=reward_function)
-
+if evaluation_mode == "None":
+    evaluation_conversation_env = conversation_environment(human, llm_agent, "", max_depth=evaluation_action_depth*2, reward_function=reward_function)
+else:
+    human_eval, llm_agent_eval = create_human_and_llm(human_model_to_use="eval_model", llm_model_to_use="eval_model")
+    evaluation_conversation_env = conversation_environment(human_eval, llm_agent_eval, "", max_depth=evaluation_action_depth*2, reward_function=reward_function)
 all_results = []
 all_results.append(evaluation_starters)
 for agent,type in zip(agents, agent_type):
