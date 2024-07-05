@@ -68,10 +68,10 @@ class Llama_2_Guard_Reward(Base_Reward):
             score_before =  self.get_safe_prob(prev_state.create_chat())
             reward = (score_after - score_before)
             print("before multipling reward is ", reward)
-            return 1000 * reward
+            return 10 * reward
         else:
             reward = self.get_safe_prob_from_embedding(torch.FloatTensor((human_response))) - self.get_safe_prob_from_embedding(torch.FloatTensor((prev_state)))
-            return 1000 * reward
+            return 10 * reward
     
     # # Get the reward delta for the action and human response if they are in embedding space
     # def get_reward(self, prev_state : tuple, action : tuple, resulting_state : tuple) -> float:
