@@ -10,13 +10,14 @@ python3 -u evaluation/run_evaluation.py \
 --mcts_time=500 \
 --reward_func=harmful \
 --trials=5 \
---lr=0.00001 \
+--lr=0.0001 \
 --pretrained_q_function=trained_q_function_daily_dialogueFULL \
 --embedding=llama \
 --agent=semantic_online \
 --result_file=output \
 --evaluation_mode=None
 ```
+
 ## Description of what each arg means:
 ```
 python3 -u evaluation/run_evaluation.py \
