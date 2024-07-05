@@ -127,7 +127,7 @@ if agent_ == "semantic_online":
             reward_function = Embedding_Dummy_Reward()
         #transition_model = TransitionModel()
         transition_model = TransitionModelMOE(noise=0.005) # need to convert to cuda. Now using CPU (does it matter?).
-        semanticqfunction = DeepQSemanticFunction(dim=dim, alpha=lr, cuda=torch.device('cuda:'+str(cuda_q_embedding)), steps_update=50) # more sophisticated Q function?
+        semanticqfunction = DeepQSemanticFunction(dim=dim, alpha=lr, cuda=torch.device('cuda:'+str(cuda_q_embedding)), steps_update=100) # more sophisticated Q function?
         pure_online_agent_semantic_agent = OnlineAgent(semanticqfunction, runtime_mcts_search_depth, runtime_mcts_timeout, llm_agent, human, reward_function, search_space="semantic_space", transition_model=transition_model, embedding_model=embed_model) # online SEMANTIC space agent
 
     agent_type.append(agent_)
