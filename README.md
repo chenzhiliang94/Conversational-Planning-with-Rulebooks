@@ -14,7 +14,8 @@ python3 -u evaluation/run_evaluation.py \
 --pretrained_q_function=trained_q_function_daily_dialogueFULL \
 --embedding=llama \
 --agent=semantic_online \
---result_file=output
+--result_file=output \
+--evaluation_mode=None
 ```
 ## Description of what each arg means:
 ```
@@ -31,7 +32,8 @@ python3 -u evaluation/run_evaluation.py \
 --pretrained_q_function=trained_q_function_daily_dialogueFULL \ ### initialize Q function from an offline trained one. Only useful if agent is "offline_online_mixed"
 --embedding=llama \ ### embedding model. use llama now.
 --agent=semantic_online \ ### greedy, random, pure_online (vanilla MCTS), offline_online_mixed, semantic_online (ours). For some agents, some previous args don't matter.
---result_file=output ### a csv file will be created in directory after everything is finished.
+--result_file=output \ ### a csv file will be created in directory after everything is finished.
+--evaluation_mode=gpt ### this is optional. If I put None, it defaults to using llama for evaluation. you can put gpt to use chatgpt for evaluation
 ```
 
 ## Things to do before running:
