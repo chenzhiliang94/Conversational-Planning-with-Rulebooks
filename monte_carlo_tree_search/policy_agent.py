@@ -127,10 +127,11 @@ class OnlineAgent(LearntAgent):
         
         # if semantic space used, some semantic projection is needed
         elif self.search_space=="semantic_space":
-            
+            print("getting best action from Q function...")
+            print("current state: ", state)
             # get conversation semantics
             truncated_state = state.conversation # actual convo
-            print(truncated_state)
+  
             output = self.embedding_model.embed(truncated_state) # embedding
             
             conversation_semantics = tuple(output.cpu().detach().numpy())
@@ -142,6 +143,7 @@ class OnlineAgent(LearntAgent):
             # get real actions
             conversation_env = conversation_environment(self.human_simulator, self.llm_agent, state.conversation, max_depth=self.search_depth, reward_function=self.reward_function_for_mcts)
             possible_actions = conversation_env.get_actions(state)
+            print("possible actions generated: ", possible_actions)
             for action in possible_actions:
                 concatenated_convo = truncated_state + action # conversation
                 output = self.embedding_model.embed(concatenated_convo) # embedding

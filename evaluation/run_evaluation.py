@@ -6,7 +6,7 @@ from monte_carlo_tree_search.qtable import QTable, DeepQSemanticFunction, Replay
 from monte_carlo_tree_search.conversation_env import *
 from agent.Agent import *
 from transformers import AutoTokenizer, BertModel, AutoModel
-from transition_models.transition_model import TransitionModel
+from transition_models.transition_model import TransitionModel, TransitionModelMOE
 from transition_models.embedding_model import embedding_model_mistral, embedding_model_nomic, embedding_model_llama
 from reward.Embedding_Dummy_Reward import Embedding_Dummy_Reward
 from reward.Human_Length_Reward import Human_Length_Reward
@@ -123,10 +123,11 @@ if agent_ == "semantic_online":
         embed_model = embedding_model_llama(cuda=torch.device('cuda:'+str(cuda_q_embedding)))
         dim = embed_model.output_dim
 
-        if reward_func == "length":
+        if reward_func == "length": # for embeddings, length reward model is not implemented. So use random
             reward_function = Embedding_Dummy_Reward()
-        transition_model = TransitionModel()
-        semanticqfunction = DeepQSemanticFunction(dim=dim, cuda=torch.device('cuda:'+str(cuda_q_embedding)), steps_update=50)
+        #transition_model = TransitionModel()
+        transition_model = TransitionModelMOE(noise=0.005) # need to convert to cuda. Now using CPU (does it matter?).
+        semanticqfunction = DeepQSemanticFunction(dim=dim, alpha=lr, cuda=torch.device('cuda:'+str(cuda_q_embedding)), steps_update=50) # more sophisticated Q function?
         pure_online_agent_semantic_agent = OnlineAgent(semanticqfunction, runtime_mcts_search_depth, runtime_mcts_timeout, llm_agent, human, reward_function, search_space="semantic_space", transition_model=transition_model, embedding_model=embed_model) # online SEMANTIC space agent
 
     agent_type.append(agent_)

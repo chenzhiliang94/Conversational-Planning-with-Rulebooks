@@ -82,9 +82,9 @@ class Llama_2_Guard_Reward(Base_Reward):
         is_list_of_chat = isinstance(chat, list) and (isinstance(chat[0], list) or isinstance(chat[0], Conversation))
         if not is_list_of_chat:
             chat = [chat]
-        print("chat input to embedding model: ", chat)
+        #print("chat input to embedding model: ", chat)
         chat = [(i.create_chat() if isinstance(i, Conversation) else i) for i in chat]
-        print("after formatting: ", chat)
+        #print("after formatting: ", chat)
         input_ids = self.tokenizer.apply_chat_template(chat, return_tensors="pt").to(self.model.device)
 
         # Append unsafe prompt to the input_ids

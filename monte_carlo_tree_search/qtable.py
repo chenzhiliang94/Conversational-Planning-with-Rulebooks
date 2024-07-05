@@ -198,13 +198,13 @@ class DeepQSemanticFunction(QFunction, DeepAgent):
             self.replay_buffer = torch.cat((self.replay_buffer, input), 0)
             
     def update(self, state, action, delta, visits, reward):
-        self.optimiser.lr=self.alpha * (1/visits)**2
+        self.optimiser = Adam(self.q_network.parameters(), lr=self.alpha * (1/visits)**2)
         merged_convo = self.merge(state, action)
         for x in range(self.update_steps):
             self.optimiser.zero_grad()  # Reset gradients to zero
             loss_fn = nn.MSELoss()
             y_pred = self.q_network(merged_convo)
-            loss = loss_fn(y_pred, torch.tensor(reward,requires_grad=True).view(1,1))
+            loss = loss_fn(y_pred, torch.tensor(reward,dtype=torch.float))
             loss.backward()
             self.optimiser.step()
         self.update_buffer(merged_convo, reward)
@@ -217,6 +217,16 @@ class DeepQSemanticFunction(QFunction, DeepAgent):
             loss.backward()
             self.optimiser.step()
         
+        # for x in range(self.steps_update):
+        #     optimiser.zero_grad()  # Reset gradients to zero
+        #     output = self.q_network(**encoded_input, labels = torch.tensor(reward, dtype=torch.float).to(self.cuda))
+        #     if output.loss == torch.tensor(float('nan')): # if loss becomes nan, reduce LR
+        #         optimiser = Adam(self.q_network.parameters(), lr= 0.1 * self.alpha * (1/visits)**2)
+        #         continue
+        #     output.loss.backward()
+        #     optimiser.step()  # Do a gradient descent step with the optimiser
+        #     print("loss in standard update: ", output.loss)
+            
     def get_q_value(self, state, action):
         merged_convo = self.merge(state, action)
         output = self.q_network(merged_convo)
@@ -229,6 +239,7 @@ class DeepQSemanticFunction(QFunction, DeepAgent):
         for action in actions:
             merged_convo = self.merge(state, action)
             reward_estimate = self.q_network(merged_convo)[0][0]
+            print("q value estimate for this action is: ", reward_estimate)
             if reward_estimate > best_reward:
                 best_action = action
                 best_reward = reward_estimate
@@ -285,8 +296,6 @@ class ReplayBufferDeepQFunction(QFunction, DeepAgent):
 
     def update(self, state, action, delta, visits, reward):
         optimiser = Adam(self.q_network.parameters(), lr=self.alpha * (1/visits)**2)
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimiser, mode="min", factor=0.1, patience=100, threshold=200)
-        criterion = torch.nn.MSELoss()
         merged_convo = self.merge(state, action)
         merged_convo = str(merged_convo)
         
