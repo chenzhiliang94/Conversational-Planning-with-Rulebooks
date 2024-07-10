@@ -13,6 +13,7 @@ class Local_LLM(LLM):
         else:
             self.tokenizer = tokenizer
         if model is None:
+            print(f'Loading model {model_config["model_config"]["pretrained_model_name_or_path"]} in Local_LLM...')
             self.model = AutoModelForCausalLM.from_pretrained(**model_config["model_config"])
         else:
             self.model = model

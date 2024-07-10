@@ -32,6 +32,7 @@ parser.add_argument("--result_file",  help="result_file_name", default="evaluati
 parser.add_argument("--agent",  help="agent type")
 parser.add_argument("--embedding", default="None")
 parser.add_argument("--cuda_for_q_and_embedding",  help="cuda")
+parser.add_argument("--cuda_for_transition",  help="cuda")
 parser.add_argument("--cuda_for_llm",  help="cuda")
 parser.add_argument("--reward_decay",  default=0.9)
 parser.add_argument("--trials",  help="trials")
@@ -48,11 +49,16 @@ evaluation_data = args["evaluation_data"]
 evaluation_action_depth = int(args["evaluation_depth"])
 runtime_mcts_search_depth = int(args["mcts_search_depth"])
 runtime_mcts_timeout = int(args["mcts_time"])
-model = torch.load(args["pretrained_q_function"])
 agent_ = args["agent"]
 embedding_type = args["embedding"]
-cuda_q_embedding = int(args["cuda_for_q_and_embedding"])
-cuda_llm = int(args["cuda_for_llm"])
+
+# Cuda devices
+convert = lambda s: int(s) if s.isdigit() else s
+cuda_q_embedding = convert(args["cuda_for_q_and_embedding"])
+cuda_transition = convert(args["cuda_for_transition"])
+cuda_llm = convert(args["cuda_for_llm"])
+
+model = torch.load(args["pretrained_q_function"], map_location=torch.device(cuda_q_embedding))
 reward_decay = float(args["reward_decay"])
 lr = float(args["lr"])
 
@@ -73,7 +79,7 @@ if reward_func == "length":
 if reward_func == "harmful":
     reward_function = Llama_2_Guard_Reward(device_map=cuda_llm)
 
-online_mcts_terminal_heuristic = OnlineAgent(DeepQFunction(), runtime_mcts_search_depth, runtime_mcts_timeout, llm_agent, human, reward_function, model) # use a brand new q function and do mcts during runtime
+online_mcts_terminal_heuristic = OnlineAgent(DeepQFunction(cuda=torch.device(cuda_q_embedding)), runtime_mcts_search_depth, runtime_mcts_timeout, llm_agent, human, reward_function, model) # use a brand new q function and do mcts during runtime
 pretrained_offline_online_mcts_agent = OnlineAgent(model, runtime_mcts_search_depth, runtime_mcts_timeout, llm_agent, human, reward_function) # use pretrained q function and perform mcts
 
 agents = []
@@ -92,7 +98,7 @@ if agent_ == "pure_offline":
     agents.append(pure_offline_agent)
     
 if agent_ == "pure_online":
-    pure_online_mcts_agent = OnlineAgent(ReplayBufferDeepQFunction(alpha=lr, steps_update=50, cuda=torch.device('cuda:'+str(cuda_q_embedding))), runtime_mcts_search_depth, runtime_mcts_timeout, llm_agent, human, reward_function, search_space="response_space", reward_decay=reward_decay) # use a brand new q function and do mcts during runtime
+    pure_online_mcts_agent = OnlineAgent(ReplayBufferDeepQFunction(alpha=lr, steps_update=50, cuda=torch.device(cuda_q_embedding)), runtime_mcts_search_depth, runtime_mcts_timeout, llm_agent, human, reward_function, search_space="response_space", reward_decay=reward_decay) # use a brand new q function and do mcts during runtime
     agent_type.append(agent_)
     agents.append(pure_online_mcts_agent)
 
@@ -107,27 +113,31 @@ if agent_ == "semantic_online":
         dim=4096
         # load model and tokenizer
         tokenizer = AutoTokenizer.from_pretrained('Salesforce/SFR-Embedding-Mistral')
-        model = AutoModel.from_pretrained('Salesforce/SFR-Embedding-Mistral').to(torch.device('cuda:'+str(cuda_q_embedding)))
+        model = AutoModel.from_pretrained('Salesforce/SFR-Embedding-Mistral').to(torch.device(cuda_q_embedding))
         print("finished loading from pretrained")
-        embed_model = embedding_model_mistral(tokenizer, model, False, torch.device('cuda:'+str(cuda_q_embedding)))
+        embed_model = embedding_model_mistral(tokenizer, model, False, torch.device(cuda_q_embedding))
 
     if embedding_type == "nomic":
         dim=768
         # load model and tokenizer
         tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
-        model = AutoModel.from_pretrained('nomic-ai/nomic-embed-text-v1', trust_remote_code=True).to(torch.device('cuda:'+str(cuda_q_embedding)))
+        model = AutoModel.from_pretrained('nomic-ai/nomic-embed-text-v1', trust_remote_code=True).to(torch.device(cuda_q_embedding))
         print("finished loading from pretrained")
-        embed_model = embedding_model_nomic(tokenizer, model, False, torch.device('cuda:'+str(cuda_q_embedding))) 
+        embed_model = embedding_model_nomic(tokenizer, model, False, torch.device(cuda_q_embedding)) 
 
     if embedding_type == "llama":
-        embed_model = embedding_model_llama(cuda=torch.device('cuda:'+str(cuda_q_embedding)))
+        if reward_func == "harmful":
+            model = reward_function.model
+        else:
+            model = None
+        embed_model = embedding_model_llama(model=model, cuda=torch.device(cuda_q_embedding))
         dim = embed_model.output_dim
 
         if reward_func == "length": # for embeddings, length reward model is not implemented. So use random
             reward_function = Embedding_Dummy_Reward()
         #transition_model = TransitionModel()
-        transition_model = TransitionModelMOE(noise=0.005) # need to convert to cuda. Now using CPU (does it matter?).
-        semanticqfunction = DeepQSemanticFunction(dim=dim, alpha=lr, cuda=torch.device('cuda:'+str(cuda_q_embedding)), steps_update=100) # more sophisticated Q function?
+        transition_model = TransitionModelMOE(noise=0.005, cuda=cuda_transition) # need to convert to cuda. Now using CPU (does it matter?).
+        semanticqfunction = DeepQSemanticFunction(dim=dim, alpha=lr, cuda=torch.device(cuda_q_embedding), steps_update=100) # more sophisticated Q function?
         pure_online_agent_semantic_agent = OnlineAgent(semanticqfunction, runtime_mcts_search_depth, runtime_mcts_timeout, llm_agent, human, reward_function, search_space="semantic_space", transition_model=transition_model, embedding_model=embed_model) # online SEMANTIC space agent
 
     agent_type.append(agent_)

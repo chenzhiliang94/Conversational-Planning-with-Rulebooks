@@ -1,11 +1,10 @@
 from torch import nn
 import torch
-from mixture_of_experts import HeirarchicalMoE
 
-class RegressionModel(nn.Module):
-    def __init__(self, embedding_size = 1024):
-        super(RegressionModel, self).__init__()
-        self.add_module("model", HeirarchicalMoE(dim = embedding_size))
+class RegressionWrapper(nn.Module):
+    def __init__(self, model, embedding_size=1024):
+        super(RegressionWrapper, self).__init__()
+        self.add_module("model", model)
         self.input_mean = nn.Parameter(torch.zeros(embedding_size), requires_grad=False)
         self.input_std = nn.Parameter(torch.ones(embedding_size), requires_grad=False)
         self.output_mean = nn.Parameter(torch.zeros(embedding_size), requires_grad=False)

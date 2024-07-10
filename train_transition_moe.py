@@ -11,7 +11,8 @@ import argparse
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-from transition_models.MoE_regression import RegressionModel
+from transition_models.regression_wrapper import RegressionWrapper
+from mixture_of_experts import HeirarchicalMoE
 
 # Define the transformation function
 def transform_samples_wrapper(start, step, use_residuals=False):
