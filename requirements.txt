@@ -12,3 +12,6 @@ datasets
 accelerate
 wandb
 mixture_of_experts
+openai
+bitsandbytes
+flash_attn
