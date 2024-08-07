@@ -200,12 +200,12 @@ class DeepQSemanticFunction(QFunction, DeepAgent):
             self.replay_buffer = torch.cat((self.replay_buffer, input), 0)
             
     def update(self, state, action, delta, visits, reward):
+        loss_fn = nn.MSELoss()
         self.optimiser = Adam(self.q_network.parameters(), lr=self.alpha * (1/visits)**2)
         merged_convo = self.merge(state, action)
         print("loss for regular q update")
         for x in range(self.update_steps):
             self.optimiser.zero_grad()  # Reset gradients to zero
-            loss_fn = nn.MSELoss()
             y_pred = self.q_network(merged_convo)
             loss = loss_fn(y_pred, torch.tensor(reward,dtype=torch.float))
             print(loss)
@@ -216,7 +216,6 @@ class DeepQSemanticFunction(QFunction, DeepAgent):
         print("loss for replay buffer q update")
         for x in range(self.update_steps):
             self.optimiser.zero_grad()  # Reset gradients to zero
-            loss_fn = nn.MSELoss()
             y_pred = self.q_network(self.replay_buffer)
             loss = loss_fn(y_pred, torch.tensor(self.past_rewards,requires_grad=True).view(y_pred.shape[0],1))
             print(loss)
