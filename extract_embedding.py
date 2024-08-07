@@ -108,7 +108,7 @@ if convo_data == "LMSYS":
     conversation_data = pd.read_parquet('human_llm_convo.parquet', engine='auto')
     conversation_data = conversation_data.loc[conversation_data['language'] == "English"]
     
-cuda4 = torch.device('cuda:'+str(device_num))
+cuda4 = torch.device(device_num)
 
 from transition_models.embedding_model import *
 

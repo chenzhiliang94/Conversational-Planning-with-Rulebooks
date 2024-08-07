@@ -13,7 +13,7 @@ class Llama_2_Guard_Reward(Base_Reward):
             assert model.name_or_path == name_or_path
             self.model = model
         except:
-            print(f"Loading model {name_or_path} in Llama_2_Guard_Reward...")
+            print(f"Loading model {name_or_path} on device {device_map} in Llama_2_Guard_Reward...")
             self.model = AutoModelForCausalLM.from_pretrained(
                 name_or_path,
                 torch_dtype = torch.bfloat16,
@@ -50,6 +50,9 @@ class Llama_2_Guard_Reward(Base_Reward):
             self.projection_mat = torch.linalg.lstsq(A.T, B.T, driver="gelsd").solution.t().to(self.model.device)
             self.proj_A = A[:, :len(self.safe_unsafe_indices)]
             self.proj_B = A[:, len(self.safe_unsafe_indices):]
+
+        self.proj_A = self.proj_A.to(self.model.device)
+        self.proj_B = self.proj_B.to(self.model.device)
         torch.cuda.empty_cache()
 
     # Get the probability of the chat being safe
@@ -104,13 +107,13 @@ class Llama_2_Guard_Reward(Base_Reward):
         return embedding
 
     def get_safe_prob_from_embedding(self, embedding : torch.tensor) -> float:
-        safe_unsafe_logits = embedding @ self.proj_A
-        safe_unsafe_probs = torch.nn.Softmax(dim=-1)(safe_unsafe_logits)
+        safe_unsafe_logits = embedding.to(self.proj_A.device) @ self.proj_A
+        safe_unsafe_probs = torch.nn.Softmax(dim=-1)(safe_unsafe_logits).cpu()
         if len(safe_unsafe_probs.shape) == 1:
             return safe_unsafe_probs[0].item()
-        return safe_unsafe_probs[:,0]
+        return safe_unsafe_probs[...,0]
 
     def get_unsafe_categories_probs_from_embedding(self, embedding : torch.tensor) -> float:
-        unsafe_logits = embedding @ self.proj_B
-        unsafe_probs = torch.nn.Softmax(dim=-1)(unsafe_logits)
+        unsafe_logits = embedding.to(self.proj_B.device) @ self.proj_B
+        unsafe_probs = torch.nn.Softmax(dim=-1)(unsafe_logits).cpu()
         return unsafe_probs
