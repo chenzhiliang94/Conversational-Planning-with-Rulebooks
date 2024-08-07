@@ -3,6 +3,8 @@ import numpy as np
 import torch
 from transition_models.regression_wrapper import RegressionWrapper
 from mixture_of_experts import HeirarchicalMoE
+import os
+
 '''
 input and output data are all in tuple format (due to the need for dict hashing in MCTS procedure).
 '''
@@ -37,24 +39,29 @@ class TransitionModel:
         return [tuple(np.random.normal(0, 1, dim)) for x in range(self.samples)]
     
 class TransitionModelMOE:
-    def __init__(self, samples=5, noise=0.05, cuda=torch.device("cpu"), max_batch_size = 4096) -> None:
+    def __init__(self, samples=5, noise=0.05, cuda=torch.device("cpu"), max_batch_size = 4096, transition_model_dir="models/deterministic/") -> None:
         self.samples = samples
         self.std = noise
         self.llm_models = [] # used to generate actions
         self.human_models = [] # used to generate transition to next state
-        main_dir = "models/deterministic/"
         self.cuda = cuda
         self.max_batch_size = max_batch_size
         print(f"Loading transition models on device {cuda}...")
-        for i in range(4):
-            models_dir = f"{main_dir}/seed_{i}_batch_2048/human_llm"
-            self.llm_models.append(RegressionWrapper(HeirarchicalMoE(1024)))
-            self.llm_models[i].load_state_dict(torch.load(f"{models_dir}/model_min_train.pth", map_location=torch.device("cpu"))["model_state_dict"])
-            self.llm_models[i].to(cuda)
-            models_dir = f"{main_dir}/seed_{i}_batch_2048/llm_human"
-            self.human_models.append(RegressionWrapper(HeirarchicalMoE(1024)))
-            self.human_models[i].load_state_dict(torch.load(f"{models_dir}/model_min_train.pth", map_location=torch.device("cpu"))["model_state_dict"])
-            self.human_models[i].to(cuda)
+        for i, dir in enumerate(os.listdir(transition_model_dir)):
+            try:
+                models_dir = f"{dir}/human_llm"
+                self.llm_models.append(RegressionWrapper(HeirarchicalMoE(1024)).cuda())
+                self.llm_models[i].load_state_dict(torch.load(f"{models_dir}/model_min_train.pth")["model_state_dict"])
+            except:
+                pass
+            try:
+                models_dir = f"{dir}/llm_human"
+                self.human_models.append(RegressionWrapper(HeirarchicalMoE(1024)).cuda())
+                self.human_models[i].load_state_dict(torch.load(f"{models_dir}/model_min_train.pth")["model_state_dict"])
+            except:
+                pass
+        assert len(self.llm_models) >= 1 and len(self.human_models) >= 1, f"No transition models loaded! Are you sure the directory {transition_model_dir} contains the models?"
+        print(f"Loaded {len(self.llm_models)} LLM models and {len(self.human_models)} human models on device {cuda}, taking up {np.sum([print_model_memory_usage(i) for i in self.llm_models]) + np.sum([print_model_memory_usage(i) for i in self.human_models]):.0f}MB.")
     
     def forward(self, input, models):   # input should be (batch x dim)
         next_states = []
@@ -111,3 +118,26 @@ class TransitionModelMOE:
         flattened = input.view(-1, input.shape[-1])
         output = self.forward(flattened, self.llm_models)
         return output.view(-1, *input.shape)        # output should be (samples x ... x dim)
+
+def model_memory_usage(model):
+    def tensor_memory(tensor):
+        if tensor is None:
+            return 0
+        num_elements = tensor.numel()
+        element_size = tensor.element_size()
+        return num_elements * element_size
+
+    total_memory = 0
+
+    for param in model.parameters():
+        total_memory += tensor_memory(param)
+        if param.grad is not None:
+            total_memory += tensor_memory(param.grad)
+
+    return total_memory
+
+def print_model_memory_usage(model):
+    memory_in_bytes = model_memory_usage(model)
+    memory_in_megabytes = memory_in_bytes / (1024 ** 2)  # Convert bytes to megabytes
+
+    return memory_in_megabytes

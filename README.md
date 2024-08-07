@@ -6,6 +6,8 @@ python3 -u evaluation/run_evaluation.py \
 --evaluation_depth=5 \
 --cuda_for_llm=5 \
 --cuda_for_q_and_embedding=5 \
+--cuda_for_transition=0 \
+--transition_model_dir="models/deterministic/" \
 --mcts_search_depth=8 \
 --mcts_time=500 \
 --reward_func=harmful \
@@ -23,8 +25,10 @@ python3 -u evaluation/run_evaluation.py \
 python3 -u evaluation/run_evaluation.py \
 --evaluation_data=evaluation_starters_love.txt \ ### conversation starter files
 --evaluation_depth=5 \ ### how many evaluation decision steps (so, LLM makes 5 decisions during evaluation; aka a conversation of 10 turns will happen) 
---cuda_for_llm=5 \ ### cuda for create_human_and_llm() and Llama_2_Guard_Reward(()
+--cuda_for_llm=5 \ ### cuda for create_human_and_llm() and Llama_2_Guard_Reward()
 --cuda_for_q_and_embedding=5 \ ### cuda for Q function and embedding_model_llama(), I realised embedding_model_llama() uses Llama guard as well so i think we are initializing twice here, using unncessary GPUs oops.
+--cuda_for_transition=0 \ ### cuda loading transition models
+--transition_model_dir="models/deterministic/" \ ### directory containing the transition models
 --mcts_search_depth=8 \ ### during MCTS how many conversation turns is searched until; note this counts the human turn as well (so, during mcts LLM makes 3-4 decisions)
 --mcts_time=500 \ ### how many seconds of MCTS to run for
 --reward_func=harmful \ ### either harmful or length.

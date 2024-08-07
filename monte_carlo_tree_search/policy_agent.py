@@ -15,6 +15,8 @@ import torch
 
 from abc import abstractmethod
 
+from time import time
+
 class LearntAgent():
     def __init__(self) -> None:
         pass
@@ -164,6 +166,51 @@ class OnlineAgent(LearntAgent):
     def reset(self):
         self.qfunction = DeepQFunction()
     
+class ExhastiveOnlineAgent(LearntAgent):
+    def __init__(self, search_depth, mcts_time_limit, llm_agent, human_simulator, reward_function_for_mcts, search_space="response_space", reward_decay=1.0, transition_model=None, embedding_model=None, **kwargs) -> None:
+        self.search_depth = search_depth
+        self.mcts_time_limit = mcts_time_limit
+        self.llm_agent = llm_agent
+        self.human_simulator = human_simulator
+        self.reward_function_for_mcts = reward_function_for_mcts
+        self.search_space = search_space
+        self.reward_decay = reward_decay
+        self.transition_model = transition_model
+        self.embedding_model = embedding_model
+    
+    def generate_action(self, state):
+        assert self.search_space=="semantic_space", "Only semantic space is supported for exhastive search"
+        conversation_env = semantic_conversation_environment(embedding_model=self.embedding_model, transition_model=self.transition_model, initial_state=state.conversation, max_depth=self.search_depth, reward_function=self.reward_function_for_mcts)
+        print("performing exhastive search...")
+
+        conversation_env = conversation_environment(self.human_simulator, self.llm_agent, state.conversation, max_depth=self.search_depth, reward_function=self.reward_function_for_mcts)
+        possible_actions = conversation_env.get_actions(state)
+
+        llm_actions = torch.stack([self.embedding_model.embed(state.conversation + i) for i in possible_actions])
+        rewards = [self.reward_function_for_mcts.get_safe_prob_from_embedding(llm_actions)]
+
+        for depth in range(1, self.search_depth+1):
+            start_time = time()
+            human_actions = self.transition_model.batch_sample_human(llm_actions)
+            human_actions_time = time() - start_time
+            start_time = time()
+            llm_actions = self.transition_model.batch_sample_human(human_actions)
+            llm_actions_time = time() - start_time
+            start_time = time()
+            rewards.append(self.reward_function_for_mcts.get_safe_prob_from_embedding(llm_actions))
+            reward_time = time() - start_time
+            print(f"current depth: {depth} considering {torch.prod(torch.tensor(llm_actions.shape[:-1]))} actions. Human action time: {human_actions_time}, llm action time: {llm_actions_time}, reward time: {reward_time}")
+
+        reward = 0
+        for i in range(len(rewards)-1, 0, -1):
+            reward = (reward * self.reward_decay + rewards[i]).max(dim=0).values.mean(dim=0)
+        reward = reward.squeeze()
+
+        best_action, best_reward = possible_actions[reward.argmax()], reward.max()
+
+        print(f"best action selected: \"{best_action}\" with cummulative reward {best_reward}")
+        return best_action
+
 def evaluate_agent(agent : LearntAgent, env, starting_state, number_replies):
     
     cumulative_reward = 0.0
